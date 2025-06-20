@@ -26,11 +26,65 @@ jobs:
           cd frontend
           npm install
           npm run build --if-present
+          
+      - name: Add web.config for Azure
+        run: |
+          cd frontend
+          cat > web.config << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <handlers>
+                <add name="iisnode" path="server.js" verb="*" modules="iisnode"/>
+              </handlers>
+              <rewrite>
+                <rules>
+                  <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
+                    <match url="^server.js\/debug[\/]?" />
+                  </rule>
+                  <rule name="StaticContent">
+                    <action type="Rewrite" url="public{REQUEST_URI}"/>
+                  </rule>
+                  <rule name="DynamicContent">
+                    <conditions>
+                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
+                    </conditions>
+                    <action type="Rewrite" url="server.js"/>
+                  </rule>
+                </rules>
+              </rewrite>
+              <security>
+                <requestFiltering>
+                  <hiddenSegments>
+                    <remove segment="bin"/>
+                  </hiddenSegments>
+                </requestFiltering>
+              </security>
+              <httpErrors existingResponse="PassThrough" />
+            </system.webServer>
+          </configuration>
+          EOF
+
+      - name: Prepare deployment package
+        run: |
+          cd frontend
+          mkdir -p deploy
+          cp -r .next/standalone/* deploy/ || echo "No standalone output"
+          cp -r .next deploy/ || echo "No .next directory"
+          cp -r public deploy/ || echo "No public directory"
+          cp -r node_modules deploy/ || echo "No node_modules"
+          cp package.json deploy/
+          cp web.config deploy/ || echo "No web.config"
+          # If no standalone, copy everything
+          if [ ! -f deploy/server.js ]; then
+            echo "No standalone build found, copying all files"
+            cp -r . deploy/
+          fi
 
       - name: Zip artifact for deployment
         run: |
-          cd frontend
-          zip release.zip ./* -r
+          cd frontend/deploy
+          zip -r ../release.zip .
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4

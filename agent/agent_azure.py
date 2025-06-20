@@ -13,8 +13,6 @@ from google_calendar_tools import (
     google_calendar_create_meeting
 )
 
-
-
 # Initialize Supabase client
 supabase: Client = None
 if os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_KEY"):
@@ -159,17 +157,19 @@ A: Yes—no long-term contracts.
         )
 
 async def entrypoint(ctx: JobContext):
-    """Main entry point for the voice agent."""
-    # Configure the voice session with Azure services
+    """Main entry point for the voice agent using Azure services."""
+    # Configure the voice session with Azure components
     session = AgentSession(
         # Azure Speech Services for STT
         stt=azure.STT(
             language="en-US",
-            # Azure Speech provides high-quality real-time transcription
+            # Optional: Configure specific Azure settings
+            # speech_recognition_language="en-US",
+            # speech_recognition_mode="interactive",
         ),
         # Azure OpenAI for LLM
         llm=openai.LLM.with_azure(
-            model="gpt-4o",  # Use gpt-4o-mini for faster/cheaper responses
+            model="gpt-4o",  # or "gpt-4o-mini" for faster responses
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
             azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
             api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
@@ -177,8 +177,12 @@ async def entrypoint(ctx: JobContext):
         ),
         # Azure Speech Services for TTS
         tts=azure.TTS(
-            voice="en-US-JennyNeural",  # Natural-sounding neural voice
-            # Other options: en-US-AriaNeural, en-US-GuyNeural
+            voice="en-US-JennyNeural",  # High-quality neural voice
+            # Other voice options:
+            # "en-US-AriaNeural" - Female
+            # "en-US-GuyNeural" - Male
+            # "en-US-JennyMultilingualNeural" - Multilingual
+            # See full list: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=tts
         ),
         vad=silero.VAD.load(),  # Voice Activity Detection
     )

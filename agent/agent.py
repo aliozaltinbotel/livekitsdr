@@ -177,8 +177,8 @@ async def entrypoint(ctx: JobContext):
         ),
         # Azure Speech Services for TTS
         tts=azure.TTS(
-            voice="en-US-JennyNeural",  # Natural-sounding neural voice
-            # Other options: en-US-AriaNeural, en-US-GuyNeural
+            voice="en-US-AlloyTurboMultilingualNeural",  # High-quality multilingual voice
+            # Other options: en-US-JennyNeural, en-US-AriaNeural, en-US-GuyNeural
         ),
         vad=silero.VAD.load(),  # Voice Activity Detection
     )

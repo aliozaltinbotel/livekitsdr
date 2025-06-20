@@ -54,6 +54,7 @@ jobs:
             sleep 10
             
             # Create new container instance
+            # The container will use .env file included in the Docker image
             az container create \
               --resource-group livekitsdr-rg \
               --name livekitsdr-agent-container \
@@ -61,15 +62,6 @@ jobs:
               --registry-login-server livekitsdracr.azurecr.io \
               --registry-username ${{ secrets.ACR_USERNAME }} \
               --registry-password "${{ secrets.ACR_PASSWORD }}" \
-              --environment-variables \
-                LIVEKIT_URL="${{ secrets.LIVEKIT_URL }}" \
-                LIVEKIT_API_KEY="${{ secrets.LIVEKIT_API_KEY }}" \
-                LIVEKIT_API_SECRET="${{ secrets.LIVEKIT_API_SECRET }}" \
-                OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-                DEEPGRAM_API_KEY="${{ secrets.DEEPGRAM_API_KEY }}" \
-                CARTESIA_API_KEY="${{ secrets.CARTESIA_API_KEY }}" \
-                SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
-                SUPABASE_KEY="${{ secrets.SUPABASE_KEY }}" \
               --cpu 1 \
               --memory 1.5 \
               --restart-policy Always \

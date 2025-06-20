@@ -59,7 +59,7 @@ export const SessionView = ({
                 key={message.id}
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 1, height: 'auto', translateY: 0.001 }}
+                exit={{ opacity: 1, height: 'auto', y: 0.001 }}
                 transition={{ duration: 0.5, ease: 'easeOut' }}
               >
                 <ChatEntry hideName key={message.id} entry={message} />

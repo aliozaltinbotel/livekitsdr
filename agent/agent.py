@@ -161,19 +161,20 @@ A: Yes—no long-term contracts.
 async def entrypoint(ctx: JobContext):
     """Main entry point for the voice agent."""
     # Configure the voice session with all components
+    # Using pipeline approach for better control and compatibility
     session = AgentSession(
         stt=deepgram.STT(
-            model="nova-2",
+            model="nova-2",  # Deepgram's best model for real-time transcription
             language="en",
         ),
         llm=openai.LLM(
-            model="gpt-4o-mini",
-            temperature=0.7,
+            model="gpt-4o-mini",  # Good balance of speed and quality for voice agents
+            temperature=0.7,  # Balanced between focused and creative responses
         ),
         tts=cartesia.TTS(
             voice="f786b574-daa5-4673-aa0c-cbe3e8534c02",
         ),
-        vad=silero.VAD.load(),
+        vad=silero.VAD.load(),  # Voice Activity Detection for speech detection
     )
     
     # Connect to the room

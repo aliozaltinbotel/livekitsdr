@@ -160,7 +160,7 @@ async def entrypoint(ctx: JobContext):
         ),
         # Azure OpenAI for LLM - Using mini model for 2x faster responses
         llm=openai.LLM.with_azure(
-            model="gpt-4o-mini",  # 2x faster than gpt-4o (150ms vs 350ms)
+            model="gpt-4o-mini",  # 2x faster than gpt-4o (150ms vs 350ms) - v2
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
             azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_MINI", os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")),
             api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),

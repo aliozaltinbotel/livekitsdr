@@ -51,7 +51,27 @@ The agent uses environment variables from a `.env` file that's included in the D
 
 GitHub Actions will automatically deploy when you push to the `agent/` directory.
 
-**Important**: The GitHub Actions workflow expects the Docker image to already contain the `.env` and Google service account files. You must build and push the image manually first using `./build-and-push.sh`.
+The workflow will:
+1. Create `.env` file from GitHub secrets
+2. Create Google service account JSON from `GOOGLE_SERVICE_ACCOUNT_JSON` secret
+3. Build and push the Docker image
+4. Deploy to Azure Container Instances
+
+#### Required GitHub Secrets
+
+Add these secrets to your repository:
+- `LIVEKIT_URL`
+- `LIVEKIT_API_KEY`
+- `LIVEKIT_API_SECRET`
+- `OPENAI_API_KEY`
+- `DEEPGRAM_API_KEY`
+- `CARTESIA_API_KEY`
+- `GOOGLE_SERVICE_ACCOUNT_JSON` - The entire contents of your Google service account JSON file
+- `SUPABASE_URL` (optional)
+- `SUPABASE_KEY` (optional)
+- `ACR_USERNAME`
+- `ACR_PASSWORD`
+- `AZURE_CREDENTIALS`
 
 ## Security Notes
 

@@ -195,6 +195,13 @@ async def entrypoint(ctx: JobContext):
         agent=assistant,
     )
     
+    # Wait a moment for audio to be ready
+    await asyncio.sleep(1)
+    
+    # Send initial greeting
+    initial_greeting = "Hi there! This is Elliot from Botel AI. Quick heads-up—I'm an AI voice assistant. If I sound human, that's the same guest experience you'll deliver with Botel. How's your day going?"
+    await assistant.say(initial_greeting, allow_interruptions=True)
+    
     # Log conversation events
     @session.on("agent_speech_committed")
     def on_agent_speech(text: str):

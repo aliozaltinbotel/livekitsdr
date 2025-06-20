@@ -22,12 +22,12 @@ export default async function AppLayout({ children }: AppLayoutProps) {
           <img
             src={logo}
             alt={`${companyName} Logo`}
-            className="block size-6 dark:hidden"
+            className="block h-10 w-auto dark:hidden"
           />
           <img
             src={logoDark ?? logo}
             alt={`${companyName} Logo`}
-            className="hidden size-6 dark:block"
+            className="hidden h-10 w-auto dark:block"
           />
         </a>
       </header>

@@ -42,12 +42,16 @@ jobs:
       - name: Deploy to Azure Container Instances
         uses: azure/CLI@v1
         with:
+          azcliversion: 2.30.0
           inlineScript: |
             # Delete existing container if it exists
             az container delete \
               --resource-group livekitsdr-rg \
               --name livekitsdr-agent-container \
               --yes || true
+            
+            # Wait a moment for deletion to complete
+            sleep 10
             
             # Create new container instance
             az container create \
@@ -56,7 +60,7 @@ jobs:
               --image livekitsdracr.azurecr.io/livekitsdr-agent:latest \
               --registry-login-server livekitsdracr.azurecr.io \
               --registry-username ${{ secrets.ACR_USERNAME }} \
-              --registry-password ${{ secrets.ACR_PASSWORD }} \
+              --registry-password "${{ secrets.ACR_PASSWORD }}" \
               --environment-variables \
                 LIVEKIT_URL="${{ secrets.LIVEKIT_URL }}" \
                 LIVEKIT_API_KEY="${{ secrets.LIVEKIT_API_KEY }}" \
@@ -72,6 +76,7 @@ jobs:
       - name: Show deployment status
         uses: azure/CLI@v1
         with:
+          azcliversion: 2.30.0
           inlineScript: |
             az container show \
               --resource-group livekitsdr-rg \

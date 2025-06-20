@@ -1,7 +1,6 @@
 import os
 import asyncio
 from datetime import datetime
-from dotenv import load_dotenv
 from livekit import agents, rtc
 from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, llm
 from livekit.agents.voice import Agent, AgentSession
@@ -15,8 +14,6 @@ from google_calendar_tools import (
 )
 
 
-# Load environment variables
-load_dotenv()
 
 # Initialize Supabase client
 supabase: Client = None

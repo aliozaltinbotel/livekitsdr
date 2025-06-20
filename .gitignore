@@ -63,3 +63,4 @@ coverage/
 # Azure
 *.xml
 *-publish-profile.xml
+azure-credentials.txt

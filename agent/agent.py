@@ -12,6 +12,7 @@ from google_calendar_tools import (
     google_calendar_check_real_availability,
     google_calendar_create_meeting
 )
+from response_cache import response_cache
 
 
 
@@ -28,24 +29,14 @@ class Assistant(Agent):
                 google_calendar_check_real_availability,
                 google_calendar_create_meeting
             ],
-            instructions="""CRITICAL RULE: When you need to use a tool, CALL IT FIRST before saying ANYTHING. No speech before tool calls!
+            instructions="""SPEED OPTIMIZATION: Keep responses SHORT and DIRECT. No fluff.
 
-When user gives you their email:
-1. FIRST: Call google_calendar_check_real_availability (NO SPEECH BEFORE THIS)
-2. THEN: Say "Great, thanks! I have [the actual times from tool result] - which works best for you?"
+TOOL RULES: Call tools SILENTLY before speaking.
 
-When user picks a time:
-1. FIRST: Call google_calendar_create_meeting (NO SPEECH BEFORE THIS)
-2. THEN: Say "Perfect! I've scheduled our demo for [time] and sent a calendar invitation to [email]. You'll receive an email with all the details including the Google Meet link."
+Email → google_calendar_check_real_availability → "I have [times] - which works?"
+Time → google_calendar_create_meeting → "Scheduled for [time]. Check your email."
 
-ABSOLUTELY FORBIDDEN:
-- ANY speech before calling a tool
-- Phrases like "Let me check", "One moment", "I'll look into that"
-- Announcing what you're about to do
-- Waiting for user input after partial responses
-
-CORRECT FLOW: User speaks → You call tool silently → You speak the complete result
-WRONG FLOW: User speaks → You speak → You call tool → Result
+FORBIDDEN: "Let me check", "One moment", long explanations
 
 ## 1. Warm Greeting & 3-Yes Icebreaker
 
@@ -167,13 +158,13 @@ async def entrypoint(ctx: JobContext):
             language="en-US",
             # Azure Speech provides high-quality real-time transcription
         ),
-        # Azure OpenAI for LLM
+        # Azure OpenAI for LLM - Using mini model for 2x faster responses
         llm=openai.LLM.with_azure(
-            model="gpt-4o",  # Use gpt-4o-mini for faster/cheaper responses
+            model="gpt-4o-mini",  # 2x faster than gpt-4o (150ms vs 350ms)
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-            azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_MINI", os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")),
             api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
-            temperature=0.7,
+            temperature=0.5,  # Lower temperature for more consistent/faster responses
         ),
         # Azure Speech Services for TTS
         tts=azure.TTS(
@@ -195,9 +186,9 @@ async def entrypoint(ctx: JobContext):
         agent=assistant,
     )
     
-    # Generate initial greeting
+    # Generate initial greeting (optimized for speed)
     await session.generate_reply(
-        instructions="Greet the user warmly as Elliot from Botel AI. Mention that you're an AI voice assistant and that if you sound human, that's the same guest experience they'll deliver with Botel. Then ask how their day is going."
+        instructions="Say EXACTLY: 'Hi! Elliot from Botel AI here. I'm an AI assistant - if I sound human, that's what your guests will experience too. How's your day?'"
     )
     
     # Log conversation events

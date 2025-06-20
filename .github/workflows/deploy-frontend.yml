@@ -35,17 +35,29 @@ jobs:
       run: |
         cd frontend
         npm run build
-        cp -r .next/standalone/* ./
-        cp -r .next/static ./.next/
-        cp -r public ./
       env:
         LIVEKIT_URL: ${{ secrets.LIVEKIT_URL }}
         LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
         LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
+        
+    - name: Prepare deployment package
+      run: |
+        cd frontend
+        # Create deployment directory
+        mkdir -p deploy
+        # Copy standalone output
+        cp -r .next/standalone/* deploy/
+        # Copy static files
+        mkdir -p deploy/.next
+        cp -r .next/static deploy/.next/
+        # Copy public files if they exist
+        [ -d "public" ] && cp -r public deploy/ || echo "No public directory"
+        # Copy package.json for Azure
+        cp package.json deploy/
 
     - name: Add startup script
       run: |
-        cd frontend
+        cd frontend/deploy
         echo '#!/bin/bash' > startup.sh
         echo 'node server.js' >> startup.sh
         chmod +x startup.sh
@@ -55,4 +67,4 @@ jobs:
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
-        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+        package: ./frontend/deploy

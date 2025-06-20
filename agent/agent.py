@@ -169,9 +169,6 @@ async def entrypoint(ctx: JobContext):
         llm=openai.LLM(
             model="gpt-4o-mini",
             temperature=0.7,
-            parallel_tool_calls=False,  # Execute tools sequentially
-            tool_choice="auto",  # Let the model decide when to use tools
-            stream=True,  # Enable streaming for faster response
         ),
         tts=cartesia.TTS(
             voice="f786b574-daa5-4673-aa0c-cbe3e8534c02",

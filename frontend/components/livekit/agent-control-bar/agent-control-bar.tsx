@@ -1,22 +1,31 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { Track } from 'livekit-client';
-import { BarVisualizer } from '@livekit/components-react';
-import { ChatTextIcon, PhoneDisconnectIcon } from '@phosphor-icons/react/dist/ssr';
-import { ChatInput } from '@/components/livekit/chat/chat-input';
-import { Button } from '@/components/ui/button';
-import { Toggle } from '@/components/ui/toggle';
-import { AppConfig } from '@/lib/types';
-import { cn } from '@/lib/utils';
-import { DeviceSelect } from '../device-select';
-import { TrackToggle } from '../track-toggle';
-import { UseAgentControlBarProps, useAgentControlBar } from './hooks/use-agent-control-bar';
+import * as React from "react";
+import { Track } from "livekit-client";
+import { BarVisualizer } from "@livekit/components-react";
+import {
+  ChatTextIcon,
+  PhoneDisconnectIcon,
+} from "@phosphor-icons/react/dist/ssr";
+import { ChatInput } from "@/components/livekit/chat/chat-input";
+import { Button } from "@/components/ui/button";
+import { Toggle } from "@/components/ui/toggle";
+import { AppConfig } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { DeviceSelect } from "../device-select";
+import { TrackToggle } from "../track-toggle";
+import {
+  UseAgentControlBarProps,
+  useAgentControlBar,
+} from "./hooks/use-agent-control-bar";
 
 export interface AgentControlBarProps
   extends React.HTMLAttributes<HTMLDivElement>,
     UseAgentControlBarProps {
-  capabilities: Pick<AppConfig, 'suportsChatInput' | 'suportsVideoInput' | 'suportsScreenShare'>;
+  capabilities: Pick<
+    AppConfig,
+    "suportsChatInput" | "suportsVideoInput" | "suportsScreenShare"
+  >;
   onChatOpenChange?: (open: boolean) => void;
   onSendMessage?: (message: string) => Promise<void>;
   onDisconnect?: () => void;
@@ -76,8 +85,8 @@ export function AgentControlBar({
     <div
       aria-label="Voice assistant controls"
       className={cn(
-        'bg-background border-bg2 dark:border-separator1 flex flex-col rounded-[31px] border p-3 drop-shadow-md/3',
-        className
+        "bg-background border-bg2 dark:border-separator1 flex flex-col rounded-[31px] border p-3 drop-shadow-md/3",
+        className,
       )}
       {...props}
     >
@@ -85,12 +94,16 @@ export function AgentControlBar({
         <div
           inert={!chatOpen}
           className={cn(
-            'overflow-hidden transition-[height] duration-300 ease-out',
-            chatOpen ? 'h-[57px]' : 'h-0'
+            "overflow-hidden transition-[height] duration-300 ease-out",
+            chatOpen ? "h-[57px]" : "h-0",
           )}
         >
           <div className="flex h-8 w-full">
-            <ChatInput onSend={handleSendMessage} disabled={isSendingMessage} className="w-full" />
+            <ChatInput
+              onSend={handleSendMessage}
+              disabled={isSendingMessage}
+              className="w-full"
+            />
           </div>
           <hr className="border-bg2 my-3" />
         </div>
@@ -116,9 +129,9 @@ export function AgentControlBar({
                 >
                   <span
                     className={cn([
-                      'h-full w-0.5 origin-center rounded-2xl',
-                      'group-data-[state=on]/track:bg-fg1 group-data-[state=off]/track:bg-destructive-foreground',
-                      'data-lk-muted:bg-muted',
+                      "h-full w-0.5 origin-center rounded-2xl",
+                      "group-data-[state=on]/track:bg-fg1 group-data-[state=off]/track:bg-destructive-foreground",
+                      "data-lk-muted:bg-muted",
                     ])}
                   ></span>
                 </BarVisualizer>
@@ -128,15 +141,18 @@ export function AgentControlBar({
                 size="sm"
                 kind="audioinput"
                 onError={(error) =>
-                  onDeviceError?.({ source: Track.Source.Microphone, error: error as Error })
+                  onDeviceError?.({
+                    source: Track.Source.Microphone,
+                    error: error as Error,
+                  })
                 }
                 onActiveDeviceChange={handleAudioDeviceChange}
                 className={cn([
-                  'pl-2',
-                  'peer-data-[state=off]/track:text-destructive-foreground',
-                  'hover:text-fg1 focus:text-fg1',
-                  'hover:peer-data-[state=off]/track:text-destructive-foreground focus:peer-data-[state=off]/track:text-destructive-foreground',
-                  'hidden rounded-l-none md:block',
+                  "pl-2",
+                  "peer-data-[state=off]/track:text-destructive-foreground",
+                  "hover:text-fg1 focus:text-fg1",
+                  "hover:peer-data-[state=off]/track:text-destructive-foreground focus:peer-data-[state=off]/track:text-destructive-foreground",
+                  "hidden rounded-l-none md:block",
                 ])}
               />
             </div>
@@ -158,15 +174,18 @@ export function AgentControlBar({
                 size="sm"
                 kind="videoinput"
                 onError={(error) =>
-                  onDeviceError?.({ source: Track.Source.Camera, error: error as Error })
+                  onDeviceError?.({
+                    source: Track.Source.Camera,
+                    error: error as Error,
+                  })
                 }
                 onActiveDeviceChange={handleVideoDeviceChange}
                 className={cn([
-                  'pl-2',
-                  'peer-data-[state=off]/track:text-destructive-foreground',
-                  'hover:text-fg1 focus:text-fg1',
-                  'hover:peer-data-[state=off]/track:text-destructive-foreground focus:peer-data-[state=off]/track:text-destructive-foreground',
-                  'hidden rounded-l-none md:block',
+                  "pl-2",
+                  "peer-data-[state=off]/track:text-destructive-foreground",
+                  "hover:text-fg1 focus:text-fg1",
+                  "hover:peer-data-[state=off]/track:text-destructive-foreground focus:peer-data-[state=off]/track:text-destructive-foreground",
+                  "hidden rounded-l-none md:block",
                 ])}
               />
             </div>

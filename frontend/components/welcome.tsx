@@ -1,5 +1,5 @@
-import { CodeBlockIcon } from '@phosphor-icons/react/dist/ssr';
-import { Button } from '@/components/ui/button';
+import { CodeBlockIcon } from "@phosphor-icons/react/dist/ssr";
+import { Button } from "@/components/ui/button";
 
 interface WelcomeProps {
   disabled: boolean;
@@ -12,7 +12,7 @@ export const Welcome = ({
   startButtonText,
   onStartCall,
   ref,
-}: React.ComponentProps<'div'> & WelcomeProps) => {
+}: React.ComponentProps<"div"> & WelcomeProps) => {
   return (
     <div
       ref={ref}
@@ -24,7 +24,7 @@ export const Welcome = ({
       <p className="text-muted-foreground max-w-prose pt-1 font-medium">
         Start a call to chat with your voice agent.
         <br />
-        Need help getting set up? Check out the{' '}
+        Need help getting set up? Check out the{" "}
         <a
           target="_blank"
           rel="noopener noreferrer"
@@ -35,7 +35,12 @@ export const Welcome = ({
         </a>
         .
       </p>
-      <Button variant="primary" size="lg" onClick={onStartCall} className="mt-12 w-64 font-mono">
+      <Button
+        variant="primary"
+        size="lg"
+        onClick={onStartCall}
+        className="mt-12 w-64 font-mono"
+      >
         {startButtonText}
       </Button>
     </div>

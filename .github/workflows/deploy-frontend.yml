@@ -1,0 +1,50 @@
+name: Deploy Frontend to Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: livekitsdr-frontend
+  AZURE_WEBAPP_PACKAGE_PATH: './frontend'
+  NODE_VERSION: '20.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: './frontend/package-lock.json'
+
+    - name: Install dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Build Next.js app
+      run: |
+        cd frontend
+        npm run build
+      env:
+        LIVEKIT_URL: ${{ secrets.LIVEKIT_URL }}
+        LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
+        LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
+        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}

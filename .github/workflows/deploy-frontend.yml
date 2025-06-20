@@ -35,10 +35,20 @@ jobs:
       run: |
         cd frontend
         npm run build
+        cp -r .next/standalone/* ./
+        cp -r .next/static ./.next/
+        cp -r public ./
       env:
         LIVEKIT_URL: ${{ secrets.LIVEKIT_URL }}
         LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
         LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
+
+    - name: Add startup script
+      run: |
+        cd frontend
+        echo '#!/bin/bash' > startup.sh
+        echo 'node server.js' >> startup.sh
+        chmod +x startup.sh
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3

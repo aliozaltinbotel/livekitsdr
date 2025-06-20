@@ -1,17 +1,17 @@
 import type { AppConfig } from "./lib/types";
 
 export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: "LiveKit",
+  companyName: "Botel AI",
   pageTitle: "Voice Assistant",
-  pageDescription: "A voice assistant built with LiveKit",
+  pageDescription: "A voice assistant built with Botel AI",
 
   suportsChatInput: true,
   suportsVideoInput: true,
   suportsScreenShare: true,
 
-  logo: "/lk-logo.svg",
+  logo: "/logobotel.svg",
   accent: "#002cf2",
-  logoDark: "/lk-logo-dark.svg",
+  logoDark: "/logobotel.svg",
   accentDark: "#1fd5f9",
-  startButtonText: "Start callx",
+  startButtonText: "Start call",
 };

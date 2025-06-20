@@ -14,8 +14,6 @@ from google_calendar_tools import (
     google_calendar_create_meeting
 )
 
-# Import health server for Azure App Service
-from health_server import start_health_server
 
 # Load environment variables
 load_dotenv()
@@ -235,10 +233,6 @@ async def log_to_supabase(room_id: str, participant_id: str, role: str, message:
         print(f"Error logging to Supabase: {e}")
 
 if __name__ == "__main__":
-    # Start health check server for Azure App Service
-    health_port = int(os.getenv("HEALTH_CHECK_PORT", "80"))
-    start_health_server(port=health_port)
-    
     # Run the agent with CLI
     cli.run_app(
         WorkerOptions(

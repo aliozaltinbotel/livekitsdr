@@ -14,8 +14,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose port 80 for health checks
-EXPOSE 80
-
 # Run the agent
 CMD ["python", "agent.py", "start"]

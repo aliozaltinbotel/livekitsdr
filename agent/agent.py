@@ -325,6 +325,18 @@ async def entrypoint(ctx: JobContext):
     user_data = {}
     last_agent_message = ""
     
+    # Import logging for debugging
+    import logging
+    
+    # Log session info for debugging
+    logging.info(f"Session started, type: {type(session)}")
+    logging.info(f"Room name: {room_name}")
+    logging.info(f"Session ID in logger: {supabase_logger.current_session_id}")
+    
+    # Try to list available events
+    if hasattr(session, '_events'):
+        logging.info(f"Available session events: {session._events}")
+    
     # Log conversation events
     @session.on("agent_speech_committed")
     def on_agent_speech(text: str):
@@ -332,7 +344,6 @@ async def entrypoint(ctx: JobContext):
         nonlocal last_agent_message
         last_agent_message = text
         print(f"Agent: {text}")
-        import logging
         logging.info(f"Agent speech committed: {text}")
         logging.info(f"Logging to room_id: {room_name}")
         asyncio.create_task(supabase_logger.log_message(
@@ -346,7 +357,6 @@ async def entrypoint(ctx: JobContext):
     def on_user_speech(text: str):
         """Log user speech to console and Supabase."""
         print(f"User: {text}")
-        import logging
         logging.info(f"User speech committed: {text}")
         logging.info(f"Logging to room_id: {room_name}")
         asyncio.create_task(supabase_logger.log_message(
@@ -394,6 +404,7 @@ async def entrypoint(ctx: JobContext):
             phone_match = re.search(r'[\+]?[(]?[0-9]{1,3}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,4}[-\s\.]?[0-9]{1,9}', text)
             if phone_match and len(phone_match.group().replace(' ', '').replace('-', '').replace('.', '').replace('(', '').replace(')', '').replace('+', '')) >= 10:
                 user_data['user_phone'] = phone_match.group()
+                logging.info(f"Extracted phone: {phone_match.group()}")
                 asyncio.create_task(supabase_logger.update_session_data(
                     room_name, 
                     {'user_phone': phone_match.group()}

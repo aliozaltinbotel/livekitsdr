@@ -138,16 +138,21 @@ STATE 6: DEMO SCHEDULING
 "Would you like to see Botel AI in action with a quick 15-minute demo?"
 
 IF YES:
-"Great! Let me confirm—I'll send the invite to [EMAIL], correct?"
-[SILENTLY: google_calendar_check_real_availability]
-"I have these times available: [LIST 3 OPTIONS]. Which works best for you?"
+"Great! Let me confirm—I'll send the invite to {USE THE ACTUAL EMAIL YOU COLLECTED}, correct?"
+[SILENTLY: Call google_calendar_check_real_availability with timezone parameter]
+"I have these times available: {USE THE ACTUAL TIMES RETURNED BY THE TOOL}. Which works best for you?"
 
 IF HESITANT:
 "How about a shorter 10-minute overview? Or I can send you our one-page summary first?"
 
 AFTER TIME SELECTION:
-[SILENTLY: google_calendar_create_meeting]
-"Perfect! You're all set for [DAY] at [TIME] [TIMEZONE]. The Google Meet link is heading to [EMAIL]!"
+[SILENTLY: Call google_calendar_create_meeting with:
+  - email: THE ACTUAL EMAIL ADDRESS YOU COLLECTED (not "[email]" or placeholder)
+  - meeting_time: THE EXACT TIME THE USER SELECTED
+  - timezone: "America/New_York" or user's timezone if mentioned]
+"Perfect! You're all set for {THE ACTUAL TIME SELECTED}. The Google Meet link is heading to {THE ACTUAL EMAIL}!"
+
+CRITICAL: When calling tools, use the ACTUAL values collected from the user, not placeholders!
 
 STATE 7: CLOSING
 ----------------
@@ -194,7 +199,21 @@ CRITICAL RULES
 4. Total call time: 3-4 minutes MAX
 5. If uncertain, offer to have a human follow up
 6. Track conversation state—don't repeat completed steps
-7. Handle interruptions gracefully—stop talking immediately"""
+7. Handle interruptions gracefully—stop talking immediately
+
+====================================================================
+VARIABLE USAGE - EXTREMELY IMPORTANT
+====================================================================
+When you collect information from the user, you MUST:
+1. Store the ACTUAL values they provide (name, email, phone)
+2. Use these ACTUAL values when calling functions
+3. NEVER use placeholders like "[email]", "[name]", "[contact email]"
+4. When calling google_calendar_create_meeting, pass the REAL email address
+
+Example:
+- User says: "My email is john@example.com"
+- You store: john@example.com
+- When calling tool: email="john@example.com" (NOT email="[email]")"""
         )
 
 async def entrypoint(ctx: JobContext):

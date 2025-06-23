@@ -11,6 +11,7 @@ import pytz
 from livekit.agents import function_tool, RunContext
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 try:
     from google.oauth2.credentials import Credentials
@@ -161,7 +162,7 @@ class GoogleCalendarIntegration:
                 },
                 'attendees': [
                     {'email': attendee_email},
-                ],
+                ] if attendee_email and '@' in attendee_email else [],
                 'conferenceData': {
                     'createRequest': {
                         'requestId': f"botel-{datetime.now().timestamp()}",
@@ -214,6 +215,7 @@ async def google_calendar_check_real_availability(
     Args:
         timezone: The timezone to check availability in
     """
+    print(f"[CALENDAR] Checking availability for timezone: {timezone}")
     logger.info(f"Checking availability for timezone: {timezone}")
     try:
         tz = pytz.timezone(timezone)
@@ -315,7 +317,16 @@ async def google_calendar_create_meeting(
         meeting_time: The selected meeting time (e.g., "Monday at 10:00 AM")
         timezone: The timezone for the meeting
     """
+    print(f"[CALENDAR] Creating meeting for {email} at '{meeting_time}' in timezone {timezone}")
     logger.info(f"Creating meeting for {email} at '{meeting_time}' in timezone {timezone}")
+    
+    # Validate email
+    if not email or '@' not in email or email.startswith('[') or email == '[contact email]':
+        error_msg = f"Invalid email address provided: '{email}'. Please provide a valid email address."
+        print(f"[CALENDAR ERROR] {error_msg}")
+        logger.error(error_msg)
+        return "I need a valid email address to send the calendar invite. Could you please confirm your email?"
+    
     try:
         calendar = get_google_calendar()
         if not calendar.service:

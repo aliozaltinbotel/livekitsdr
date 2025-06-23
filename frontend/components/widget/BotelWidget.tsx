@@ -1,15 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Room, RoomEvent, Track, DataPacket_Kind } from "livekit-client";
-import {
-  RoomAudioRenderer,
-  RoomContext,
-  useRoom,
-  useLocalParticipant,
-  useTracks,
-  useDataChannel,
-} from "@livekit/components-react";
+import { Room, RoomEvent } from "livekit-client";
+import { RoomAudioRenderer, RoomContext } from "@livekit/components-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +34,7 @@ export function BotelWidget({
     },
   ]);
 
-  const room = useRef<Room | null>(null);
+  // const room = useRef<Room | null>(null);
 
   useEffect(() => {
     // Load saved state
@@ -83,7 +76,7 @@ export function BotelWidget({
             exit={{ scale: 0 }}
             className={cn(
               "fixed z-[999998] w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110",
-              positionClasses[position]
+              positionClasses[position],
             )}
             style={{ backgroundColor: primaryColor }}
             onClick={toggleWidget}
@@ -112,8 +105,10 @@ export function BotelWidget({
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             className={cn(
               "fixed z-[999999] w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden",
-              position === "bottom-right" ? "bottom-20 right-5" : "bottom-20 left-5",
-              "max-[420px]:w-full max-[420px]:h-full max-[420px]:bottom-0 max-[420px]:right-0 max-[420px]:left-0 max-[420px]:rounded-none"
+              position === "bottom-right"
+                ? "bottom-20 right-5"
+                : "bottom-20 left-5",
+              "max-[420px]:w-full max-[420px]:h-full max-[420px]:bottom-0 max-[420px]:right-0 max-[420px]:left-0 max-[420px]:rounded-none",
             )}
           >
             {/* Header */}
@@ -122,7 +117,9 @@ export function BotelWidget({
               style={{ backgroundColor: primaryColor }}
             >
               <div>
-                <h3 className="text-lg font-semibold">{companyName} Assistant</h3>
+                <h3 className="text-lg font-semibold">
+                  {companyName} Assistant
+                </h3>
                 <span className="text-xs opacity-90 flex items-center">
                   <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse" />
                   Online
@@ -155,7 +152,7 @@ export function BotelWidget({
                   "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2",
                   mode === "chat"
                     ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                    : "text-gray-600 hover:text-gray-900",
                 )}
                 onClick={() => switchMode("chat")}
               >
@@ -174,7 +171,7 @@ export function BotelWidget({
                   "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2",
                   mode === "voice"
                     ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                    : "text-gray-600 hover:text-gray-900",
                 )}
                 onClick={() => switchMode("voice")}
               >
@@ -198,7 +195,11 @@ export function BotelWidget({
 
             {/* Content Area */}
             {mode === "chat" ? (
-              <ChatMode messages={messages} setMessages={setMessages} primaryColor={primaryColor} />
+              <ChatMode
+                messages={messages}
+                setMessages={setMessages}
+                primaryColor={primaryColor}
+              />
             ) : (
               <VoiceMode
                 serverUrl={serverUrl}
@@ -270,15 +271,19 @@ function ChatMode({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className={cn("flex gap-3", message.role === "user" && "flex-row-reverse")}
+              className={cn(
+                "flex gap-3",
+                message.role === "user" && "flex-row-reverse",
+              )}
             >
               <div
                 className={cn(
                   "w-9 h-9 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0",
-                  message.role === "user" ? "bg-gray-400" : ""
+                  message.role === "user" ? "bg-gray-400" : "",
                 )}
                 style={{
-                  backgroundColor: message.role === "assistant" ? primaryColor : undefined,
+                  backgroundColor:
+                    message.role === "assistant" ? primaryColor : undefined,
                 }}
               >
                 {message.role === "user" ? "U" : "AI"}
@@ -288,7 +293,7 @@ function ChatMode({
                   "max-w-[70%] px-4 py-2.5 rounded-2xl",
                   message.role === "user"
                     ? "bg-gray-100 text-gray-900"
-                    : "bg-gray-50 text-gray-900"
+                    : "bg-gray-50 text-gray-900",
                 )}
               >
                 {message.content}
@@ -306,7 +311,7 @@ function ChatMode({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             placeholder="Type your message..."
             className="flex-1 px-4 py-2 border border-gray-300 rounded-full text-sm focus:outline-none focus:border-blue-500"
           />
@@ -356,15 +361,14 @@ function VoiceMode({
   const startCall = async () => {
     try {
       setIsCallActive(true);
-      
       if (!roomRef.current) {
         roomRef.current = new Room();
-        
+
         // Set up event listeners
         roomRef.current.on(RoomEvent.DataReceived, (data: Uint8Array) => {
           const decoder = new TextDecoder();
           const message = JSON.parse(decoder.decode(data));
-          
+
           if (message.type === "transcript") {
             setTranscript((prev) => [
               ...prev,
@@ -414,7 +418,7 @@ function VoiceMode({
           <RoomAudioRenderer />
         </RoomContext.Provider>
       )}
-      
+
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         {/* Voice Avatar */}
         <div className="relative mb-8">
@@ -424,7 +428,7 @@ function VoiceMode({
           >
             AI
           </div>
-          
+
           {/* Speaking Animation */}
           {isCallActive && isConnected && (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -447,8 +451,8 @@ function VoiceMode({
           {!isCallActive
             ? "Click microphone to start"
             : isConnected
-            ? "Connected - Speak now"
-            : "Connecting..."}
+              ? "Connected - Speak now"
+              : "Connecting..."}
         </p>
 
         {/* Controls */}
@@ -457,7 +461,7 @@ function VoiceMode({
             onClick={isCallActive ? endCall : startCall}
             className={cn(
               "w-14 h-14 rounded-full flex items-center justify-center text-white transition-all",
-              isCallActive ? "bg-green-500 hover:bg-green-600" : ""
+              isCallActive ? "bg-green-500 hover:bg-green-600" : "",
             )}
             style={{
               backgroundColor: !isCallActive ? primaryColor : undefined,
@@ -485,10 +489,7 @@ function VoiceMode({
               >
                 {isMuted ? (
                   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M11 5L6 9H2V15H6L11 19V5Z"
-                      fill="currentColor"
-                    />
+                    <path d="M11 5L6 9H2V15H6L11 19V5Z" fill="currentColor" />
                     <path
                       d="M23 9L17 15M17 9L23 15"
                       stroke="currentColor"
@@ -498,10 +499,7 @@ function VoiceMode({
                   </svg>
                 ) : (
                   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M11 5L6 9H2V15H6L11 19V5Z"
-                      fill="currentColor"
-                    />
+                    <path d="M11 5L6 9H2V15H6L11 19V5Z" fill="currentColor" />
                     <path
                       d="M15.54 8.46C16.4774 9.39764 17.0039 10.6692 17.0039 11.995C17.0039 13.3208 16.4774 14.5924 15.54 15.53M19.07 4.93C20.9447 6.80528 21.9979 9.34836 21.9979 12C21.9979 14.6516 20.9447 17.1947 19.07 19.07"
                       stroke="currentColor"
@@ -538,7 +536,7 @@ function VoiceMode({
                 key={i}
                 className={cn(
                   "text-sm mb-1",
-                  entry.role === "user" ? "text-blue-600" : "text-gray-700"
+                  entry.role === "user" ? "text-blue-600" : "text-gray-700",
                 )}
               >
                 {entry.role === "user" ? "You: " : "Agent: "}

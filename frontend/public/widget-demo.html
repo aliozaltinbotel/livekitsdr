@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botel AI Widget Demo - Standalone</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .demo-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .config-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .config-controls {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #002cf2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #0022d0;
+        }
+        
+        .code-preview {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .lorem-section {
+            margin-top: 30px;
+        }
+        
+        .lorem-section h2 {
+            color: #555;
+        }
+        
+        .lorem-section p {
+            line-height: 1.6;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Botel AI Widget Demo</h1>
+        
+        <div class="demo-content">
+            <h2>Live Widget Configuration</h2>
+            <p>Use the controls below to test different widget configurations in real-time.</p>
+            
+            <div class="config-section">
+                <div class="config-controls">
+                    <div class="control-group">
+                        <label for="position">Position:</label>
+                        <select id="position">
+                            <option value="bottom-right">Bottom Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="primaryColor">Primary Color:</label>
+                        <input type="color" id="primaryColor" value="#002cf2">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="companyName">Company Name:</label>
+                        <input type="text" id="companyName" value="Botel AI" placeholder="Your Company Name">
+                    </div>
+                </div>
+                
+                <button onclick="applyConfig()">Apply Changes</button>
+                
+                <h3 style="margin-top: 20px;">Integration Code:</h3>
+                <div class="code-preview" id="codePreview"></div>
+            </div>
+        </div>
+        
+        <div class="demo-content lorem-section">
+            <h2>Example Website Content</h2>
+            <p>This is example content to demonstrate how the widget appears on a typical website. The widget floats above all content and doesn't interfere with your page layout.</p>
+            
+            <h3>About Our Services</h3>
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+            
+            <h3>Why Choose Us</h3>
+            <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+            
+            <h3>Contact Information</h3>
+            <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+        </div>
+    </div>
+
+    <!-- Widget will be injected here -->
+    <div id="botel-widget-root"></div>
+
+    <script>
+        // Configuration management
+        let widgetConfig = {
+            position: 'bottom-right',
+            primaryColor: '#002cf2',
+            companyName: 'Botel AI',
+            apiEndpoint: '/api/connection-details'
+        };
+
+        function updateCodePreview() {
+            const code = `<script>
+  window.BotelWidgetConfig = ${JSON.stringify(widgetConfig, null, 2)};
+</script>
+<script src="https://your-domain.com/widget/embed.js" async></script>`;
+            
+            document.getElementById('codePreview').textContent = code;
+        }
+
+        function applyConfig() {
+            widgetConfig.position = document.getElementById('position').value;
+            widgetConfig.primaryColor = document.getElementById('primaryColor').value;
+            widgetConfig.companyName = document.getElementById('companyName').value;
+            
+            updateCodePreview();
+            
+            // Reload widget with new config
+            window.BotelWidgetConfig = widgetConfig;
+            
+            // Remove existing widget
+            const existingWidget = document.getElementById('botel-widget-iframe');
+            if (existingWidget) {
+                existingWidget.remove();
+            }
+            
+            // Reinitialize widget
+            if (window.BotelWidget) {
+                window.BotelWidget.destroy();
+            }
+            
+            // Load widget script
+            loadWidget();
+        }
+
+        function loadWidget() {
+            // In production, this would load from your CDN
+            // For now, we'll inline the widget code
+            const script = document.createElement('script');
+            script.textContent = `${getWidgetCode()}`;
+            document.body.appendChild(script);
+        }
+
+        function getWidgetCode() {
+            // This is a simplified version - in production, load from embed.js
+            return `
+                (function() {
+                    // Copy the widget code from embed.js here
+                    // For demo purposes, we'll create a simple version
+                    
+                    const config = window.BotelWidgetConfig || {};
+                    
+                    // Create widget button
+                    const button = document.createElement('div');
+                    button.style.cssText = \`
+                        position: fixed;
+                        \${config.position === 'bottom-left' ? 'left: 20px;' : 'right: 20px;'}
+                        bottom: 20px;
+                        width: 60px;
+                        height: 60px;
+                        background: \${config.primaryColor || '#002cf2'};
+                        border-radius: 50%;
+                        cursor: pointer;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 999999;
+                        transition: transform 0.2s;
+                    \`;
+                    
+                    button.innerHTML = '<svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12C2 13.19 2.23 14.32 2.64 15.36L2 22L8.64 21.36C9.68 21.77 10.81 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM17 13H15V11H17V13ZM13 13H11V11H13V13ZM9 13H7V11H9V13Z"/></svg>';
+                    
+                    button.onmouseover = () => button.style.transform = 'scale(1.05)';
+                    button.onmouseout = () => button.style.transform = 'scale(1)';
+                    
+                    button.onclick = () => {
+                        alert(\`\${config.companyName || 'Botel AI'} Widget Demo\\n\\nIn production, this would open the chat/voice interface.\\n\\nPosition: \${config.position}\\nColor: \${config.primaryColor}\`);
+                    };
+                    
+                    document.body.appendChild(button);
+                    
+                    // Store reference for cleanup
+                    window.BotelWidget = {
+                        destroy: () => button.remove()
+                    };
+                })();
+            `;
+        }
+
+        // Initialize on load
+        updateCodePreview();
+        loadWidget();
+    </script>
+</body>
+</html>

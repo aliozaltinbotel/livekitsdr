@@ -317,13 +317,24 @@ async def entrypoint(ctx: JobContext):
     )
     
     # Generate initial greeting (optimized for speed)
+    initial_greeting = "Hi there! I'm Jamie from Botel AI—and yes, I'm an AI assistant. I'd love to get your contact info to schedule a demo of our property management platform. This quick call is recorded for quality. Is now a good time?"
     await session.generate_reply(
-        instructions="Say EXACTLY: 'Hi there! I'm Jamie from Botel AI—and yes, I'm an AI assistant. I'd love to get your contact info to schedule a demo of our property management platform. This quick call is recorded for quality. Is now a good time?'"
+        instructions=f"Say EXACTLY: '{initial_greeting}'"
     )
+    
+    # Store the initial greeting as the first agent message
+    last_agent_message = initial_greeting
+    logging.info(f"Initial agent greeting: {initial_greeting}")
+    asyncio.create_task(supabase_logger.log_message(
+        room_id=room_name,
+        participant_id="agent",
+        role="agent",
+        message=initial_greeting
+    ))
     
     # Track collected user data and context
     user_data = {}
-    last_agent_message = ""
+    # last_agent_message already initialized above with the greeting
     
     # Import logging for debugging
     import logging
@@ -343,7 +354,31 @@ async def entrypoint(ctx: JobContext):
         text_lower = text.lower()
         
         # Extract name if in name collection state (basic heuristic)
-        if len(user_data.get('user_name', '')) == 0:
+        # Also check for name corrections like "No, this is X" or "my name is X"
+        if 'my name is' in text_lower or 'this is ' in text_lower or 'i am ' in text_lower or "i'm " in text_lower:
+            # Extract name from phrases like "my name is Ali" or "this is Ali"
+            import re
+            name_patterns = [
+                r"my name is (\w+)",
+                r"this is (\w+)",
+                r"i am (\w+)",
+                r"i'm (\w+)",
+                r"call me (\w+)"
+            ]
+            for pattern in name_patterns:
+                match = re.search(pattern, text_lower)
+                if match:
+                    potential_name = match.group(1).capitalize()
+                    if potential_name.lower() not in ['yes', 'no', 'okay', 'sure']:
+                        user_data['user_name'] = potential_name
+                        logging.info(f"Extracted name from phrase: {potential_name}")
+                        asyncio.create_task(supabase_logger.update_session_data(
+                            room_name, 
+                            {'user_name': potential_name}
+                        ))
+                        break
+        
+        elif len(user_data.get('user_name', '')) == 0:
             # More flexible name detection - if we don't have agent context, try to detect names
             # Look for common name patterns after agent asks for name OR if text looks like a name
             should_check_name = False
@@ -365,12 +400,18 @@ async def entrypoint(ctx: JobContext):
                 words = text.strip().split()
                 if words and len(words[0]) > 1 and words[0].replace("'", "").replace("-", "").replace(".", "").isalpha():
                     potential_name = words[0].capitalize()
-                    user_data['user_name'] = potential_name
-                    logging.info(f"Extracted name: {potential_name}")
-                    asyncio.create_task(supabase_logger.update_session_data(
-                        room_name, 
-                        {'user_name': potential_name}
-                    ))
+                    
+                    # Exclude common non-name responses
+                    exclude_words = ['yes', 'no', 'okay', 'sure', 'correct', 'right', 'wrong', 'maybe', 'please', 'thanks']
+                    if potential_name.lower() not in exclude_words:
+                        user_data['user_name'] = potential_name
+                        logging.info(f"Extracted name: {potential_name}")
+                        asyncio.create_task(supabase_logger.update_session_data(
+                            room_name, 
+                            {'user_name': potential_name}
+                        ))
+                    else:
+                        logging.info(f"Skipped common word as name: {potential_name}")
         
         # Check for email
         if '@' in text or ' at ' in text_lower:

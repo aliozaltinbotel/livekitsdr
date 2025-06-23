@@ -337,36 +337,9 @@ async def entrypoint(ctx: JobContext):
     if hasattr(session, '_events'):
         logging.info(f"Available session events: {session._events}")
     
-    # Log conversation events
-    @session.on("agent_speech_committed")
-    def on_agent_speech(text: str):
-        """Log agent speech to console and Supabase."""
-        nonlocal last_agent_message
-        last_agent_message = text
-        print(f"Agent: {text}")
-        logging.info(f"Agent speech committed: {text}")
-        logging.info(f"Logging to room_id: {room_name}")
-        asyncio.create_task(supabase_logger.log_message(
-            room_id=room_name,
-            participant_id="agent",
-            role="agent",
-            message=text
-        ))
-    
-    @session.on("user_speech_committed")
-    def on_user_speech(text: str):
-        """Log user speech to console and Supabase."""
-        print(f"User: {text}")
-        logging.info(f"User speech committed: {text}")
-        logging.info(f"Logging to room_id: {room_name}")
-        asyncio.create_task(supabase_logger.log_message(
-            room_id=room_name,
-            participant_id=getattr(ctx.job, 'participant_identity', None) or "user",
-            role="user",
-            message=text
-        ))
-        
-        # Extract and store user data from conversation
+    # Define helper function for data extraction
+    def extract_user_data(text: str):
+        """Extract user data from conversation text."""
         text_lower = text.lower()
         
         # Extract name if in name collection state (basic heuristic)
@@ -410,6 +383,89 @@ async def entrypoint(ctx: JobContext):
                     {'user_phone': phone_match.group()}
                 ))
     
+    # Log conversation events - using the actual available events
+    # The logs show only 'agent_state_changed' and 'user_input_transcribed' are available
+    
+    # Track user transcriptions
+    @session.on("user_input_transcribed")
+    def on_user_transcribed(data):
+        """Log user transcribed speech."""
+        # Extract text from the event data
+        text = None
+        if isinstance(data, str):
+            text = data
+        elif hasattr(data, 'text'):
+            text = data.text
+        elif hasattr(data, 'transcript'):
+            text = data.transcript
+        else:
+            text = str(data)
+            
+        if text:
+            print(f"User: {text}")
+            logging.info(f"User transcribed: {text}")
+            asyncio.create_task(supabase_logger.log_message(
+                room_id=room_name,
+                participant_id=getattr(ctx.job, 'participant_identity', None) or "user",
+                role="user",
+                message=text
+            ))
+            # Extract user data
+            extract_user_data(text)
+    
+    # Track agent state changes which might include speech
+    @session.on("agent_state_changed")
+    def on_agent_state(state):
+        """Track agent state changes."""
+        logging.info(f"Agent state changed: {state}")
+        # Try to extract speech from state if available
+        if hasattr(state, 'speaking') and state.speaking and hasattr(state, 'current_speech'):
+            text = state.current_speech
+            nonlocal last_agent_message
+            last_agent_message = text
+            print(f"Agent: {text}")
+            asyncio.create_task(supabase_logger.log_message(
+                room_id=room_name,
+                participant_id="agent",
+                role="agent",
+                message=text
+            ))
+    
+    # Also try the original events in case they work
+    try:
+        @session.on("agent_speech_committed")
+        def on_agent_speech(text: str):
+            """Log agent speech if event is available."""
+            nonlocal last_agent_message
+            last_agent_message = text
+            print(f"Agent: {text}")
+            logging.info(f"Agent speech committed: {text}")
+            asyncio.create_task(supabase_logger.log_message(
+                room_id=room_name,
+                participant_id="agent",
+                role="agent",
+                message=text
+            ))
+    except:
+        logging.warning("agent_speech_committed event not available")
+        
+    try:
+        @session.on("user_speech_committed")
+        def on_user_speech(text: str):
+            """Log user speech if event is available."""
+            print(f"User: {text}")
+            logging.info(f"User speech committed: {text}")
+            asyncio.create_task(supabase_logger.log_message(
+                room_id=room_name,
+                participant_id=getattr(ctx.job, 'participant_identity', None) or "user",
+                role="user",
+                message=text
+            ))
+            # Extract user data
+            extract_user_data(text)
+    except:
+        logging.warning("user_speech_committed event not available")
+    
     @session.on("function_calls_finished")
     def on_function_calls_finished(function_calls):
         """Log tool calls to Supabase."""
@@ -436,10 +492,44 @@ async def entrypoint(ctx: JobContext):
         """Handle room disconnect."""
         asyncio.create_task(supabase_logger.end_session(room_name, 'disconnected'))
     
+    # Monitor conversation history as a fallback for agent messages
+    async def monitor_conversation():
+        """Monitor conversation history to capture agent messages."""
+        last_message_count = 0
+        while True:
+            try:
+                # Check if session has conversation history
+                if hasattr(session, 'chat_ctx') and hasattr(session.chat_ctx, 'messages'):
+                    messages = session.chat_ctx.messages
+                    if len(messages) > last_message_count:
+                        # Process new messages
+                        for msg in messages[last_message_count:]:
+                            if hasattr(msg, 'role') and hasattr(msg, 'content'):
+                                if msg.role == 'assistant':
+                                    nonlocal last_agent_message
+                                    last_agent_message = msg.content
+                                    print(f"[HISTORY] Agent: {msg.content}")
+                                    logging.info(f"Agent from history: {msg.content}")
+                                    asyncio.create_task(supabase_logger.log_message(
+                                        room_id=room_name,
+                                        participant_id="agent",
+                                        role="agent",
+                                        message=msg.content
+                                    ))
+                        last_message_count = len(messages)
+                await asyncio.sleep(1)  # Check every second
+            except Exception as e:
+                logging.error(f"Error monitoring conversation: {e}")
+                await asyncio.sleep(5)
+    
+    # Start conversation monitor
+    monitor_task = asyncio.create_task(monitor_conversation())
+    
     # Ensure cleanup on any exit
     try:
         await asyncio.Future()  # Keep running until cancelled
     except asyncio.CancelledError:
+        monitor_task.cancel()
         await supabase_logger.end_session(room_name, 'cancelled')
         raise
 

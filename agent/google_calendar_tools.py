@@ -407,8 +407,15 @@ async def google_calendar_create_meeting(
             # Log successful demo scheduling to Supabase
             try:
                 import asyncio
+                # Get room name from context
+                room_id = "unknown"
+                if hasattr(context, 'room') and hasattr(context.room, 'name'):
+                    room_id = context.room.name
+                elif hasattr(context, 'job') and hasattr(context.job, 'id'):
+                    room_id = context.job.id
+                
                 asyncio.create_task(supabase_logger.mark_demo_scheduled(
-                    room_id=context.room.name if hasattr(context, 'room') else "unknown",
+                    room_id=room_id,
                     demo_time=start_time.isoformat(),
                     timezone=timezone
                 ))

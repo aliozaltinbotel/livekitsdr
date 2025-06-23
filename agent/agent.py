@@ -256,10 +256,11 @@ REMEMBER: A voice conversation should NEVER have long silences. Keep it flowing!
 async def entrypoint(ctx: JobContext):
     """Main entry point for the voice agent."""
     # Start Supabase session logging
+    room_name = getattr(ctx.room, 'name', None) or ctx.job.id
     session_id = await supabase_logger.start_session(
-        room_id=ctx.room.name,
+        room_id=room_name,
         job_id=ctx.job.id,
-        participant_id=ctx.job.participant_identity
+        participant_id=getattr(ctx.job, 'participant_identity', None) or "unknown"
     )
     
     # Create the assistant first
@@ -332,7 +333,7 @@ async def entrypoint(ctx: JobContext):
         last_agent_message = text
         print(f"Agent: {text}")
         asyncio.create_task(supabase_logger.log_message(
-            room_id=ctx.room.name,
+            room_id=room_name,
             participant_id="agent",
             role="agent",
             message=text
@@ -343,8 +344,8 @@ async def entrypoint(ctx: JobContext):
         """Log user speech to console and Supabase."""
         print(f"User: {text}")
         asyncio.create_task(supabase_logger.log_message(
-            room_id=ctx.room.name,
-            participant_id=ctx.job.participant_identity,
+            room_id=room_name,
+            participant_id=getattr(ctx.job, 'participant_identity', None) or "user",
             role="user",
             message=text
         ))
@@ -362,7 +363,7 @@ async def entrypoint(ctx: JobContext):
                     potential_name = words[0].capitalize()
                     user_data['user_name'] = potential_name
                     asyncio.create_task(supabase_logger.update_session_data(
-                        ctx.room.name, 
+                        room_name, 
                         {'user_name': potential_name}
                     ))
         
@@ -373,7 +374,7 @@ async def entrypoint(ctx: JobContext):
             if email_match:
                 user_data['user_email'] = email_match.group()
                 asyncio.create_task(supabase_logger.update_session_data(
-                    ctx.room.name, 
+                    room_name, 
                     {'user_email': email_match.group()}
                 ))
         
@@ -385,7 +386,7 @@ async def entrypoint(ctx: JobContext):
             if phone_match and len(phone_match.group().replace(' ', '').replace('-', '').replace('.', '').replace('(', '').replace(')', '').replace('+', '')) >= 10:
                 user_data['user_phone'] = phone_match.group()
                 asyncio.create_task(supabase_logger.update_session_data(
-                    ctx.room.name, 
+                    room_name, 
                     {'user_phone': phone_match.group()}
                 ))
     
@@ -394,7 +395,7 @@ async def entrypoint(ctx: JobContext):
         """Log tool calls to Supabase."""
         for call in function_calls:
             asyncio.create_task(supabase_logger.log_tool_call(
-                room_id=ctx.room.name,
+                room_id=room_name,
                 tool_name=call.function_info.name,
                 parameters=call.arguments,
                 result=str(call.result) if hasattr(call, 'result') else None,
@@ -405,20 +406,21 @@ async def entrypoint(ctx: JobContext):
     @ctx.room.on("participant_disconnected")
     def on_participant_disconnected(participant: rtc.RemoteParticipant):
         """Handle participant disconnect."""
-        if participant.identity == ctx.job.participant_identity:
-            asyncio.create_task(supabase_logger.end_session(ctx.room.name, 'completed'))
+        job_participant = getattr(ctx.job, 'participant_identity', None)
+        if job_participant and participant.identity == job_participant:
+            asyncio.create_task(supabase_logger.end_session(room_name, 'completed'))
     
     # Also handle room disconnect
     @ctx.room.on("disconnected")
     def on_room_disconnected():
         """Handle room disconnect."""
-        asyncio.create_task(supabase_logger.end_session(ctx.room.name, 'disconnected'))
+        asyncio.create_task(supabase_logger.end_session(room_name, 'disconnected'))
     
     # Ensure cleanup on any exit
     try:
         await asyncio.Future()  # Keep running until cancelled
     except asyncio.CancelledError:
-        await supabase_logger.end_session(ctx.room.name, 'cancelled')
+        await supabase_logger.end_session(room_name, 'cancelled')
         raise
 
 if __name__ == "__main__":

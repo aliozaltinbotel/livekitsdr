@@ -51,7 +51,9 @@ class SupabaseLogger:
                 'agent_version': 'jamie-v1'
             }
             
-            result = self.client.table('sessions').insert(session_data).execute()
+            result = await asyncio.to_thread(
+                lambda: self.client.table('sessions').insert(session_data).execute()
+            )
             logger.info(f"Session started: {room_id}")
             
             # Log system message about session start
@@ -84,7 +86,9 @@ class SupabaseLogger:
             if self.session_data:
                 update_data.update(self.session_data)
             
-            self.client.table('sessions').update(update_data).eq('session_id', room_id).execute()
+            await asyncio.to_thread(
+                lambda: self.client.table('sessions').update(update_data).eq('session_id', room_id).execute()
+            )
             logger.info(f"Session ended: {room_id} with status: {status}")
             
             # Log system message about session end
@@ -120,7 +124,9 @@ class SupabaseLogger:
             if metadata:
                 message_data['metadata'] = metadata
             
-            self.client.table('conversations').insert(message_data).execute()
+            await asyncio.to_thread(
+                lambda: self.client.table('conversations').insert(message_data).execute()
+            )
             
         except Exception as e:
             logger.error(f"Error logging message: {e}")
@@ -140,7 +146,9 @@ class SupabaseLogger:
                 **data
             }
             
-            self.client.table('sessions').update(update_data).eq('session_id', room_id).execute()
+            await asyncio.to_thread(
+                lambda: self.client.table('sessions').update(update_data).eq('session_id', room_id).execute()
+            )
             logger.info(f"Session data updated: {data}")
             
         except Exception as e:
@@ -163,7 +171,9 @@ class SupabaseLogger:
                 'timestamp': datetime.utcnow().isoformat()
             }
             
-            self.client.table('tool_calls').insert(tool_data).execute()
+            await asyncio.to_thread(
+                lambda: self.client.table('tool_calls').insert(tool_data).execute()
+            )
             logger.info(f"Tool call logged: {tool_name}")
             
         except Exception as e:

@@ -165,11 +165,6 @@ async def entrypoint(ctx: JobContext):
             end_of_turn_confidence_threshold=0.7,
             # Minimum silence duration when confident about end of turn (160ms default)
             min_end_of_turn_silence_when_confident=160,
-            # Optional: Boost specific words/terms relevant to your use case
-            word_boost=[
-                "Botel AI", "Airbnb", "WhatsApp", "Guesty", "Hostaway", "Lodgify",
-                "upsell", "check-out", "check-in", "property", "listing"
-            ],
         ),
         # Azure OpenAI for LLM - Using mini model for 2x faster responses
         llm=openai.LLM.with_azure(

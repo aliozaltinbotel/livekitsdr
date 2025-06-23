@@ -344,11 +344,26 @@ async def entrypoint(ctx: JobContext):
         
         # Extract name if in name collection state (basic heuristic)
         if len(user_data.get('user_name', '')) == 0:
-            # Look for common name patterns after agent asks for name
-            if any(phrase in last_agent_message.lower() for phrase in ['your first name', 'may i have your', 'what should i call']):
+            # More flexible name detection - if we don't have agent context, try to detect names
+            # Look for common name patterns after agent asks for name OR if text looks like a name
+            should_check_name = False
+            
+            if last_agent_message:
+                # Check if agent asked for name
+                if any(phrase in last_agent_message.lower() for phrase in ['your first name', 'may i have your', 'what should i call', 'your name']):
+                    should_check_name = True
+            else:
+                # No agent context, but check if this might be a name response
+                # Single word responses that are alphabetic and capitalized are often names
+                words = text.strip().split()
+                if len(words) <= 2 and words:  # 1-2 word responses
+                    if words[0].replace("'", "").replace("-", "").isalpha():
+                        should_check_name = True
+            
+            if should_check_name:
                 # Simple name extraction - first word that's likely a name
                 words = text.strip().split()
-                if words and len(words[0]) > 1 and words[0].replace("'", "").replace("-", "").isalpha():
+                if words and len(words[0]) > 1 and words[0].replace("'", "").replace("-", "").replace(".", "").isalpha():
                     potential_name = words[0].capitalize()
                     user_data['user_name'] = potential_name
                     logging.info(f"Extracted name: {potential_name}")
@@ -358,8 +373,9 @@ async def entrypoint(ctx: JobContext):
                     ))
         
         # Check for email
-        if '@' in text and '.' in text:
+        if '@' in text or ' at ' in text_lower:
             import re
+            # First try standard email format
             email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
             if email_match:
                 email = email_match.group()
@@ -369,6 +385,18 @@ async def entrypoint(ctx: JobContext):
                     room_name, 
                     {'user_email': email}
                 ))
+            else:
+                # Try to handle spoken format like "john at example dot com"
+                text_normalized = text_lower.replace(' at ', '@').replace(' dot ', '.')
+                email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text_normalized)
+                if email_match:
+                    email = email_match.group()
+                    user_data['user_email'] = email
+                    logging.info(f"Extracted email (from spoken format): {email}")
+                    asyncio.create_task(supabase_logger.update_session_data(
+                        room_name, 
+                        {'user_email': email}
+                    ))
         
         # Check for phone number (basic pattern)
         if any(char.isdigit() for char in text):
@@ -496,30 +524,58 @@ async def entrypoint(ctx: JobContext):
     async def monitor_conversation():
         """Monitor conversation history to capture agent messages."""
         last_message_count = 0
+        attempts = 0
         while True:
             try:
-                # Check if session has conversation history
+                attempts += 1
+                # Log every 10th attempt to see if it's running
+                if attempts % 10 == 0:
+                    logging.info(f"Conversation monitor running (attempt {attempts})")
+                
+                # Try multiple ways to access conversation history
+                messages = None
+                
+                # Method 1: chat_ctx.messages
                 if hasattr(session, 'chat_ctx') and hasattr(session.chat_ctx, 'messages'):
                     messages = session.chat_ctx.messages
-                    if len(messages) > last_message_count:
-                        # Process new messages
-                        for msg in messages[last_message_count:]:
-                            if hasattr(msg, 'role') and hasattr(msg, 'content'):
-                                if msg.role == 'assistant':
-                                    nonlocal last_agent_message
-                                    last_agent_message = msg.content
-                                    print(f"[HISTORY] Agent: {msg.content}")
-                                    logging.info(f"Agent from history: {msg.content}")
-                                    asyncio.create_task(supabase_logger.log_message(
-                                        room_id=room_name,
-                                        participant_id="agent",
-                                        role="agent",
-                                        message=msg.content
-                                    ))
-                        last_message_count = len(messages)
+                    if attempts == 1:
+                        logging.info(f"Found chat_ctx.messages with {len(messages)} messages")
+                
+                # Method 2: Try _chat_ctx
+                elif hasattr(session, '_chat_ctx') and hasattr(session._chat_ctx, 'messages'):
+                    messages = session._chat_ctx.messages
+                    if attempts == 1:
+                        logging.info(f"Found _chat_ctx.messages with {len(messages)} messages")
+                
+                # Method 3: Try agent's chat context
+                elif hasattr(assistant, 'chat_ctx') and hasattr(assistant.chat_ctx, 'messages'):
+                    messages = assistant.chat_ctx.messages
+                    if attempts == 1:
+                        logging.info(f"Found assistant.chat_ctx.messages with {len(messages)} messages")
+                
+                if messages and len(messages) > last_message_count:
+                    # Process new messages
+                    for msg in messages[last_message_count:]:
+                        if hasattr(msg, 'role') and hasattr(msg, 'content'):
+                            if msg.role == 'assistant':
+                                nonlocal last_agent_message
+                                last_agent_message = msg.content
+                                print(f"[HISTORY] Agent: {msg.content}")
+                                logging.info(f"Agent from history: {msg.content}")
+                                asyncio.create_task(supabase_logger.log_message(
+                                    room_id=room_name,
+                                    participant_id="agent",
+                                    role="agent",
+                                    message=msg.content
+                                ))
+                    last_message_count = len(messages)
+                elif attempts == 1:
+                    logging.warning("No conversation history found to monitor")
+                    
                 await asyncio.sleep(1)  # Check every second
             except Exception as e:
-                logging.error(f"Error monitoring conversation: {e}")
+                if attempts == 1:
+                    logging.error(f"Error monitoring conversation: {e}")
                 await asyncio.sleep(5)
     
     # Start conversation monitor

@@ -73,9 +73,12 @@ jobs:
                 AZURE_OPENAI_API_KEY="${{ secrets.AZURE_OPENAI_API_KEY }}" \
                 AZURE_OPENAI_ENDPOINT="${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
                 AZURE_OPENAI_DEPLOYMENT_NAME="${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}" \
+                AZURE_OPENAI_DEPLOYMENT_NAME_MINI="${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME_MINI }}" \
                 AZURE_OPENAI_API_VERSION="${{ secrets.AZURE_OPENAI_API_VERSION }}" \
                 AZURE_SPEECH_KEY="${{ secrets.AZURE_SPEECH_KEY }}" \
                 AZURE_SPEECH_REGION="${{ secrets.AZURE_SPEECH_REGION }}" \
+                ASSEMBLYAI_API_KEY="${{ secrets.ASSEMBLYAI_API_KEY }}" \
+                CARTESIA_API_KEY="${{ secrets.CARTESIA_API_KEY }}" \
                 GOOGLE_SERVICE_ACCOUNT_KEY="/app/botelai-d95567fc3ae3.json" \
                 GOOGLE_CALENDAR_ID="${{ secrets.GOOGLE_CALENDAR_ID }}" \
                 GOOGLE_DELEGATED_USER_EMAIL="${{ secrets.GOOGLE_DELEGATED_USER_EMAIL }}" \

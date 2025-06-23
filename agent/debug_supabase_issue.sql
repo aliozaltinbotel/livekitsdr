@@ -34,12 +34,13 @@ SELECT
     s.user_email,
     s.user_phone,
     s.demo_scheduled,
+    s.created_at,
     COUNT(c.id) as conversation_count,
     COUNT(CASE WHEN c.role = 'user' THEN 1 END) as user_messages,
     COUNT(CASE WHEN c.role = 'agent' THEN 1 END) as agent_messages
 FROM sessions s
 LEFT JOIN conversations c ON s.session_id = c.session_id
-GROUP BY s.session_id, s.user_name, s.user_email, s.user_phone, s.demo_scheduled
+GROUP BY s.session_id, s.user_name, s.user_email, s.user_phone, s.demo_scheduled, s.created_at
 HAVING COUNT(c.id) > 0
 ORDER BY s.created_at DESC;
 

@@ -316,6 +316,9 @@ async def entrypoint(ctx: JobContext):
         agent=assistant,
     )
     
+    # Import logging for debugging
+    import logging
+    
     # Generate initial greeting (optimized for speed)
     initial_greeting = "Hi there! I'm Jamie from Botel AI—and yes, I'm an AI assistant. I'd love to get your contact info to schedule a demo of our property management platform. This quick call is recorded for quality. Is now a good time?"
     await session.generate_reply(
@@ -335,9 +338,6 @@ async def entrypoint(ctx: JobContext):
     # Track collected user data and context
     user_data = {}
     # last_agent_message already initialized above with the greeting
-    
-    # Import logging for debugging
-    import logging
     
     # Log session info for debugging
     logging.info(f"Session started, type: {type(session)}")

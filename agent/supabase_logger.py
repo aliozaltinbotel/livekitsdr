@@ -161,10 +161,24 @@ class SupabaseLogger:
                 lambda: self.client.table('sessions').update(update_data).eq('session_id', room_id).execute()
             )
             
-            if result.data:
+            if result.data and len(result.data) > 0:
                 logger.info(f"Session data updated successfully for {room_id}: {data}")
+                logger.info(f"Updated rows: {len(result.data)}")
             else:
                 logger.warning(f"No rows updated for session {room_id}")
+                # Try to create session if it doesn't exist
+                logger.info(f"Attempting to create session {room_id} with data")
+                session_data = {
+                    'session_id': room_id,
+                    'started_at': datetime.utcnow().isoformat(),
+                    'status': 'active',
+                    **data
+                }
+                create_result = await asyncio.to_thread(
+                    lambda: self.client.table('sessions').upsert(session_data).execute()
+                )
+                if create_result.data:
+                    logger.info(f"Session created/updated via upsert: {room_id}")
                 
         except Exception as e:
             logger.error(f"Error updating session data for {room_id}: {e}")

@@ -333,7 +333,8 @@ async def entrypoint(ctx: JobContext):
         last_agent_message = text
         print(f"Agent: {text}")
         import logging
-        logging.info(f"Agent speech: {text}")
+        logging.info(f"Agent speech committed: {text}")
+        logging.info(f"Logging to room_id: {room_name}")
         asyncio.create_task(supabase_logger.log_message(
             room_id=room_name,
             participant_id="agent",
@@ -346,7 +347,8 @@ async def entrypoint(ctx: JobContext):
         """Log user speech to console and Supabase."""
         print(f"User: {text}")
         import logging
-        logging.info(f"User speech: {text}")
+        logging.info(f"User speech committed: {text}")
+        logging.info(f"Logging to room_id: {room_name}")
         asyncio.create_task(supabase_logger.log_message(
             room_id=room_name,
             participant_id=getattr(ctx.job, 'participant_identity', None) or "user",
@@ -366,6 +368,7 @@ async def entrypoint(ctx: JobContext):
                 if words and len(words[0]) > 1 and words[0].replace("'", "").replace("-", "").isalpha():
                     potential_name = words[0].capitalize()
                     user_data['user_name'] = potential_name
+                    logging.info(f"Extracted name: {potential_name}")
                     asyncio.create_task(supabase_logger.update_session_data(
                         room_name, 
                         {'user_name': potential_name}

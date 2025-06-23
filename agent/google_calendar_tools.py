@@ -407,18 +407,39 @@ async def google_calendar_create_meeting(
             # Log successful demo scheduling to Supabase
             try:
                 import asyncio
-                # Get room name from context
-                room_id = "unknown"
-                if hasattr(context, 'room') and hasattr(context.room, 'name'):
-                    room_id = context.room.name
-                elif hasattr(context, 'job') and hasattr(context.job, 'id'):
-                    room_id = context.job.id
+                # Get room name from context - try multiple approaches
+                room_id = None
                 
-                asyncio.create_task(supabase_logger.mark_demo_scheduled(
-                    room_id=room_id,
-                    demo_time=start_time.isoformat(),
-                    timezone=timezone
-                ))
+                # First try to get from context attributes
+                if hasattr(context, 'room'):
+                    if hasattr(context.room, 'name'):
+                        room_id = context.room.name
+                    elif hasattr(context.room, 'sid'):
+                        room_id = context.room.sid
+                
+                # If not found, try job attributes
+                if not room_id and hasattr(context, 'job'):
+                    if hasattr(context.job, 'room'):
+                        if hasattr(context.job.room, 'name'):
+                            room_id = context.job.room.name
+                        elif hasattr(context.job.room, 'sid'):
+                            room_id = context.job.room.sid
+                    elif hasattr(context.job, 'id'):
+                        room_id = context.job.id
+                
+                # Try to get from current session in supabase_logger
+                if not room_id and hasattr(supabase_logger, 'current_session_id'):
+                    room_id = supabase_logger.current_session_id
+                
+                if room_id:
+                    logger.info(f"Marking demo scheduled for room_id: {room_id}")
+                    asyncio.create_task(supabase_logger.mark_demo_scheduled(
+                        room_id=room_id,
+                        demo_time=start_time.isoformat(),
+                        timezone=timezone
+                    ))
+                else:
+                    logger.warning("Could not determine room_id for demo scheduling")
             except Exception as e:
                 logger.error(f"Error logging demo to Supabase: {e}")
             

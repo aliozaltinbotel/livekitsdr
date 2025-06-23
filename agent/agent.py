@@ -332,6 +332,8 @@ async def entrypoint(ctx: JobContext):
         nonlocal last_agent_message
         last_agent_message = text
         print(f"Agent: {text}")
+        import logging
+        logging.info(f"Agent speech: {text}")
         asyncio.create_task(supabase_logger.log_message(
             room_id=room_name,
             participant_id="agent",
@@ -343,6 +345,8 @@ async def entrypoint(ctx: JobContext):
     def on_user_speech(text: str):
         """Log user speech to console and Supabase."""
         print(f"User: {text}")
+        import logging
+        logging.info(f"User speech: {text}")
         asyncio.create_task(supabase_logger.log_message(
             room_id=room_name,
             participant_id=getattr(ctx.job, 'participant_identity', None) or "user",
@@ -372,10 +376,12 @@ async def entrypoint(ctx: JobContext):
             import re
             email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
             if email_match:
-                user_data['user_email'] = email_match.group()
+                email = email_match.group()
+                user_data['user_email'] = email
+                logging.info(f"Extracted email: {email}")
                 asyncio.create_task(supabase_logger.update_session_data(
                     room_name, 
-                    {'user_email': email_match.group()}
+                    {'user_email': email}
                 ))
         
         # Check for phone number (basic pattern)

@@ -73,6 +73,7 @@ class SupabaseLogger:
     async def end_session(self, room_id: str, status: str = 'completed'):
         """End a session and update its status"""
         if not self.client or not room_id:
+            logger.warning(f"Cannot end session: client={bool(self.client)}, room_id={room_id}")
             return
         
         try:
@@ -84,12 +85,19 @@ class SupabaseLogger:
             
             # Add any collected user data
             if self.session_data:
+                logger.info(f"Adding collected session data to final update: {self.session_data}")
                 update_data.update(self.session_data)
             
-            await asyncio.to_thread(
+            logger.info(f"Ending session {room_id} with update data: {update_data}")
+            
+            result = await asyncio.to_thread(
                 lambda: self.client.table('sessions').update(update_data).eq('session_id', room_id).execute()
             )
-            logger.info(f"Session ended: {room_id} with status: {status}")
+            
+            if result.data:
+                logger.info(f"Session ended successfully: {room_id} with status: {status}")
+            else:
+                logger.warning(f"No session found to end: {room_id}")
             
             # Log system message about session end
             await self.log_message(
@@ -134,6 +142,7 @@ class SupabaseLogger:
     async def update_session_data(self, room_id: str, data: Dict[str, Any]):
         """Update session with collected user data"""
         if not self.client:
+            logger.warning("No Supabase client available for update")
             return
         
         # Store data locally
@@ -146,13 +155,20 @@ class SupabaseLogger:
                 **data
             }
             
-            await asyncio.to_thread(
+            logger.info(f"Updating session {room_id} with data: {update_data}")
+            
+            result = await asyncio.to_thread(
                 lambda: self.client.table('sessions').update(update_data).eq('session_id', room_id).execute()
             )
-            logger.info(f"Session data updated: {data}")
             
+            if result.data:
+                logger.info(f"Session data updated successfully for {room_id}: {data}")
+            else:
+                logger.warning(f"No rows updated for session {room_id}")
+                
         except Exception as e:
-            logger.error(f"Error updating session data: {e}")
+            logger.error(f"Error updating session data for {room_id}: {e}")
+            logger.error(f"Update data was: {update_data}")
     
     async def log_tool_call(self, room_id: str, tool_name: str, parameters: Dict, 
                            result: str, success: bool = True, error_message: Optional[str] = None):
@@ -181,11 +197,13 @@ class SupabaseLogger:
     
     async def mark_demo_scheduled(self, room_id: str, demo_time: str, timezone: str):
         """Mark that a demo was successfully scheduled"""
-        await self.update_session_data(room_id, {
+        data = {
             'demo_scheduled': True,
             'demo_time': demo_time,
             'demo_timezone': timezone
-        })
+        }
+        logger.info(f"Marking demo scheduled for session {room_id}: {data}")
+        await self.update_session_data(room_id, data)
 
 # Global instance
 supabase_logger = SupabaseLogger()

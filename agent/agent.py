@@ -5,7 +5,6 @@ from livekit import agents, rtc
 from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, llm
 from livekit.agents.voice import Agent, AgentSession
 from livekit.plugins import openai, silero, assemblyai, cartesia
-from supabase import create_client, Client
 
 # Import Google Calendar tools
 from google_calendar_tools import (
@@ -13,13 +12,7 @@ from google_calendar_tools import (
     google_calendar_create_meeting
 )
 from response_cache import response_cache
-
-
-
-# Initialize Supabase client
-supabase: Client = None
-if os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_KEY"):
-    supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+from supabase_logger import supabase_logger
 
 class Assistant(Agent):
     def __init__(self) -> None:
@@ -262,6 +255,13 @@ REMEMBER: A voice conversation should NEVER have long silences. Keep it flowing!
 
 async def entrypoint(ctx: JobContext):
     """Main entry point for the voice agent."""
+    # Start Supabase session logging
+    session_id = await supabase_logger.start_session(
+        room_id=ctx.room.name,
+        job_id=ctx.job.id,
+        participant_id=ctx.job.participant_identity
+    )
+    
     # Create the assistant first
     assistant = Assistant()
     
@@ -320,43 +320,106 @@ async def entrypoint(ctx: JobContext):
         instructions="Say EXACTLY: 'Hi there! I'm Jamie from Botel AI—and yes, I'm an AI assistant. I'd love to get your contact info to schedule a demo of our property management platform. This quick call is recorded for quality. Is now a good time?'"
     )
     
+    # Track collected user data and context
+    user_data = {}
+    last_agent_message = ""
+    
     # Log conversation events
     @session.on("agent_speech_committed")
     def on_agent_speech(text: str):
-        """Log agent speech to console and optionally to Supabase."""
+        """Log agent speech to console and Supabase."""
+        nonlocal last_agent_message
+        last_agent_message = text
         print(f"Agent: {text}")
-        if supabase:
-            asyncio.create_task(log_to_supabase(
-                room_id=ctx.room.name,
-                participant_id=ctx.job.participant_identity,
-                role="agent",
-                message=text
-            ))
+        asyncio.create_task(supabase_logger.log_message(
+            room_id=ctx.room.name,
+            participant_id="agent",
+            role="agent",
+            message=text
+        ))
     
     @session.on("user_speech_committed")
     def on_user_speech(text: str):
-        """Log user speech to console and optionally to Supabase."""
+        """Log user speech to console and Supabase."""
         print(f"User: {text}")
-        if supabase:
-            asyncio.create_task(log_to_supabase(
+        asyncio.create_task(supabase_logger.log_message(
+            room_id=ctx.room.name,
+            participant_id=ctx.job.participant_identity,
+            role="user",
+            message=text
+        ))
+        
+        # Extract and store user data from conversation
+        text_lower = text.lower()
+        
+        # Extract name if in name collection state (basic heuristic)
+        if len(user_data.get('user_name', '')) == 0:
+            # Look for common name patterns after agent asks for name
+            if any(phrase in last_agent_message.lower() for phrase in ['your first name', 'may i have your', 'what should i call']):
+                # Simple name extraction - first word that's likely a name
+                words = text.strip().split()
+                if words and len(words[0]) > 1 and words[0].replace("'", "").replace("-", "").isalpha():
+                    potential_name = words[0].capitalize()
+                    user_data['user_name'] = potential_name
+                    asyncio.create_task(supabase_logger.update_session_data(
+                        ctx.room.name, 
+                        {'user_name': potential_name}
+                    ))
+        
+        # Check for email
+        if '@' in text and '.' in text:
+            import re
+            email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
+            if email_match:
+                user_data['user_email'] = email_match.group()
+                asyncio.create_task(supabase_logger.update_session_data(
+                    ctx.room.name, 
+                    {'user_email': email_match.group()}
+                ))
+        
+        # Check for phone number (basic pattern)
+        if any(char.isdigit() for char in text):
+            import re
+            # Match various phone formats
+            phone_match = re.search(r'[\+]?[(]?[0-9]{1,3}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,4}[-\s\.]?[0-9]{1,9}', text)
+            if phone_match and len(phone_match.group().replace(' ', '').replace('-', '').replace('.', '').replace('(', '').replace(')', '').replace('+', '')) >= 10:
+                user_data['user_phone'] = phone_match.group()
+                asyncio.create_task(supabase_logger.update_session_data(
+                    ctx.room.name, 
+                    {'user_phone': phone_match.group()}
+                ))
+    
+    @session.on("function_calls_finished")
+    def on_function_calls_finished(function_calls):
+        """Log tool calls to Supabase."""
+        for call in function_calls:
+            asyncio.create_task(supabase_logger.log_tool_call(
                 room_id=ctx.room.name,
-                participant_id=ctx.job.participant_identity,
-                role="user",
-                message=text
+                tool_name=call.function_info.name,
+                parameters=call.arguments,
+                result=str(call.result) if hasattr(call, 'result') else None,
+                success=True
             ))
-
-async def log_to_supabase(room_id: str, participant_id: str, role: str, message: str):
-    """Log conversation to Supabase database."""
+    
+    # Add cleanup on disconnect
+    @ctx.room.on("participant_disconnected")
+    def on_participant_disconnected(participant: rtc.RemoteParticipant):
+        """Handle participant disconnect."""
+        if participant.identity == ctx.job.participant_identity:
+            asyncio.create_task(supabase_logger.end_session(ctx.room.name, 'completed'))
+    
+    # Also handle room disconnect
+    @ctx.room.on("disconnected")
+    def on_room_disconnected():
+        """Handle room disconnect."""
+        asyncio.create_task(supabase_logger.end_session(ctx.room.name, 'disconnected'))
+    
+    # Ensure cleanup on any exit
     try:
-        await supabase.table('conversations').insert({
-            'room_id': room_id,
-            'participant_id': participant_id,
-            'role': role,
-            'message': message,
-            'timestamp': datetime.utcnow().isoformat()
-        }).execute()
-    except Exception as e:
-        print(f"Error logging to Supabase: {e}")
+        await asyncio.Future()  # Keep running until cancelled
+    except asyncio.CancelledError:
+        await supabase_logger.end_session(ctx.room.name, 'cancelled')
+        raise
 
 if __name__ == "__main__":
     # Run the agent with CLI

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 import pytz
 from livekit.agents import function_tool, RunContext
+from supabase_logger import supabase_logger
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -402,6 +403,18 @@ async def google_calendar_create_meeting(
         
         if event:
             meet_link = event.get('hangoutLink', 'the meeting link in your invitation')
+            
+            # Log successful demo scheduling to Supabase
+            try:
+                import asyncio
+                asyncio.create_task(supabase_logger.mark_demo_scheduled(
+                    room_id=context.room.name if hasattr(context, 'room') else "unknown",
+                    demo_time=start_time.isoformat(),
+                    timezone=timezone
+                ))
+            except Exception as e:
+                logger.error(f"Error logging demo to Supabase: {e}")
+            
             return (
                 f"Perfect! I've scheduled our demo for {meeting_time} and sent a calendar invitation "
                 f"to {email}. You'll receive an email with all the details including {meet_link}. "

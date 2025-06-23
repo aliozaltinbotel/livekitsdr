@@ -4,7 +4,7 @@ from datetime import datetime
 from livekit import agents, rtc
 from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, llm
 from livekit.agents.voice import Agent, AgentSession
-from livekit.plugins import openai, azure, silero
+from livekit.plugins import openai, silero, assemblyai, cartesia
 from supabase import create_client, Client
 
 # Import Google Calendar tools
@@ -151,12 +151,25 @@ A: Yes—no long-term contracts.
 
 async def entrypoint(ctx: JobContext):
     """Main entry point for the voice agent."""
-    # Configure the voice session with Azure services
+    # Configure the voice session with AssemblyAI Universal Streaming
     session = AgentSession(
-        # Azure Speech Services for STT
-        stt=azure.STT(
-            language="en-US",
-            # Azure Speech provides high-quality real-time transcription
+        # AssemblyAI Universal Streaming for STT
+        stt=assemblyai.STT(
+            # API key will be read from ASSEMBLYAI_API_KEY env var if not provided
+            api_key=os.getenv("ASSEMBLYAI_API_KEY"),
+            # Sample rate for audio (16kHz is standard for telephony)
+            sample_rate=16000,
+            # Enable formatted transcripts for better turn detection
+            format_turns=True,
+            # Confidence threshold for end of turn detection (0.7 is default)
+            end_of_turn_confidence_threshold=0.7,
+            # Minimum silence duration when confident about end of turn (160ms default)
+            min_end_of_turn_silence_when_confident=160,
+            # Optional: Boost specific words/terms relevant to your use case
+            word_boost=[
+                "Botel AI", "Airbnb", "WhatsApp", "Guesty", "Hostaway", "Lodgify",
+                "upsell", "check-out", "check-in", "property", "listing"
+            ],
         ),
         # Azure OpenAI for LLM - Using mini model for 2x faster responses
         llm=openai.LLM.with_azure(
@@ -166,10 +179,20 @@ async def entrypoint(ctx: JobContext):
             api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
             temperature=0.5,  # Lower temperature for more consistent/faster responses
         ),
-        # Azure Speech Services for TTS
-        tts=azure.TTS(
-            voice="en-US-AlloyTurboMultilingualNeural",  # High-quality multilingual voice
-            # Other options: en-US-JennyNeural, en-US-AriaNeural, en-US-GuyNeural
+        # Cartesia TTS with Sonic Turbo for ultra-low latency
+        tts=cartesia.TTS(
+            # API key will be read from CARTESIA_API_KEY env var if not provided
+            api_key=os.getenv("CARTESIA_API_KEY"),
+            # Model options: "sonic-turbo" (40ms latency) or "sonic" (90ms latency)
+            model="sonic-turbo",
+            # Voice ID - using a professional voice suitable for business calls
+            voice="248be419-c632-4f23-adf1-5324ed7dbf1d",  # Professional English voice
+            # Language code
+            language="en",
+            # Speed: -1.0 to 1.0 (0 is normal) or "fastest", "fast", "normal", "slow", "slowest"
+            speed=0.0,  # Normal speed
+            # Emotion control for more natural speech (experimental)
+            emotion=["positivity:high"],  # Friendly, positive tone
         ),
         vad=silero.VAD.load(),  # Voice Activity Detection
     )

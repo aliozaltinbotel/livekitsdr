@@ -12,6 +12,9 @@ from google_calendar_tools import (
     google_calendar_check_real_availability,
     google_calendar_create_meeting
 )
+from response_cache import response_cache
+
+
 
 # Initialize Supabase client
 supabase: Client = None
@@ -26,24 +29,14 @@ class Assistant(Agent):
                 google_calendar_check_real_availability,
                 google_calendar_create_meeting
             ],
-            instructions="""CRITICAL RULE: When you need to use a tool, CALL IT FIRST before saying ANYTHING. No speech before tool calls!
+            instructions="""SPEED OPTIMIZATION: Keep responses SHORT and DIRECT. No fluff.
 
-When user gives you their email:
-1. FIRST: Call google_calendar_check_real_availability (NO SPEECH BEFORE THIS)
-2. THEN: Say "Great, thanks! I have [the actual times from tool result] - which works best for you?"
+TOOL RULES: Call tools SILENTLY before speaking.
 
-When user picks a time:
-1. FIRST: Call google_calendar_create_meeting (NO SPEECH BEFORE THIS)
-2. THEN: Say "Perfect! I've scheduled our demo for [time] and sent a calendar invitation to [email]. You'll receive an email with all the details including the Google Meet link."
+Email → google_calendar_check_real_availability → "I have [times] - which works?"
+Time → google_calendar_create_meeting → "Scheduled for [time]. Check your email."
 
-ABSOLUTELY FORBIDDEN:
-- ANY speech before calling a tool
-- Phrases like "Let me check", "One moment", "I'll look into that"
-- Announcing what you're about to do
-- Waiting for user input after partial responses
-
-CORRECT FLOW: User speaks → You call tool silently → You speak the complete result
-WRONG FLOW: User speaks → You speak → You call tool → Result
+FORBIDDEN: "Let me check", "One moment", long explanations
 
 ## 1. Warm Greeting & 3-Yes Icebreaker
 
@@ -157,32 +150,26 @@ A: Yes—no long-term contracts.
         )
 
 async def entrypoint(ctx: JobContext):
-    """Main entry point for the voice agent using Azure services."""
-    # Configure the voice session with Azure components
+    """Main entry point for the voice agent."""
+    # Configure the voice session with Azure services
     session = AgentSession(
         # Azure Speech Services for STT
         stt=azure.STT(
             language="en-US",
-            # Optional: Configure specific Azure settings
-            # speech_recognition_language="en-US",
-            # speech_recognition_mode="interactive",
+            # Azure Speech provides high-quality real-time transcription
         ),
-        # Azure OpenAI for LLM
+        # Azure OpenAI for LLM - Using mini model for 2x faster responses
         llm=openai.LLM.with_azure(
-            model="gpt-4o",  # or "gpt-4o-mini" for faster responses
+            model="gpt-4o-mini",  # 2x faster than gpt-4o (150ms vs 350ms) - v2
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-            azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_MINI", os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")),
             api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
-            temperature=0.7,
+            temperature=0.5,  # Lower temperature for more consistent/faster responses
         ),
         # Azure Speech Services for TTS
         tts=azure.TTS(
-            voice="en-US-JennyNeural",  # High-quality neural voice
-            # Other voice options:
-            # "en-US-AriaNeural" - Female
-            # "en-US-GuyNeural" - Male
-            # "en-US-JennyMultilingualNeural" - Multilingual
-            # See full list: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=tts
+            voice="en-US-AlloyTurboMultilingualNeural",  # High-quality multilingual voice
+            # Other options: en-US-JennyNeural, en-US-AriaNeural, en-US-GuyNeural
         ),
         vad=silero.VAD.load(),  # Voice Activity Detection
     )
@@ -197,6 +184,11 @@ async def entrypoint(ctx: JobContext):
     await session.start(
         room=ctx.room,
         agent=assistant,
+    )
+    
+    # Generate initial greeting (optimized for speed)
+    await session.generate_reply(
+        instructions="Say EXACTLY: 'Hi! Elliot from Botel AI here. I'm an AI assistant - if I sound human, that's what your guests will experience too. How's your day?'"
     )
     
     # Log conversation events

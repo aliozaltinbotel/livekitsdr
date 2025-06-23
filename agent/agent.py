@@ -151,6 +151,9 @@ A: Yes—no long-term contracts.
 
 async def entrypoint(ctx: JobContext):
     """Main entry point for the voice agent."""
+    # Create the assistant first
+    assistant = Assistant()
+    
     # Configure the voice session with AssemblyAI Universal Streaming
     session = AgentSession(
         # AssemblyAI Universal Streaming for STT
@@ -194,9 +197,6 @@ async def entrypoint(ctx: JobContext):
     
     # Connect to the room
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-    
-    # Create the assistant
-    assistant = Assistant()
     
     # Start the agent session
     await session.start(

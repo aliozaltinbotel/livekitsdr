@@ -36,10 +36,10 @@ done
 # Update MCP server URL to use localhost
 export PMS_MCP_SERVER_URL="http://localhost:3001/sse"
 
-# Start agent
+# Start agent in production mode
 echo "Starting LiveKit agent..."
 cd /app
-python agent.py &
+python agent.py start &
 AGENT_PID=$!
 
 # Log both PIDs

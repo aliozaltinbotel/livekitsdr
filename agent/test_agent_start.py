@@ -23,7 +23,7 @@ try:
     from livekit.agents import cli
     
     # Use the azure_working agent which doesn't have MCP imports
-    from agent_azure_working import Assistant, entrypoint, WorkerOptions
+    from agent import Assistant, entrypoint, WorkerOptions
     
     print("Starting LiveKit agent in development mode...")
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))

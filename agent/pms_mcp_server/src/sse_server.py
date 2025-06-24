@@ -162,12 +162,14 @@ async def init_app() -> web.Application:
     app.router.add_post("/messages/", handle_messages)
     
     # Add CORS middleware
-    async def cors_middleware(request, handler):
-        response = await handler(request)
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        return response
+    async def cors_middleware(app, handler):
+        async def middleware_handler(request):
+            response = await handler(request)
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            return response
+        return middleware_handler
     
     app.middlewares.append(cors_middleware)
     

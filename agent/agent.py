@@ -725,5 +725,7 @@ if __name__ == "__main__":
             api_key=os.getenv("LIVEKIT_API_KEY"),
             api_secret=os.getenv("LIVEKIT_API_SECRET"),
             ws_url=os.getenv("LIVEKIT_URL"),
+            # Accept all job requests for voice assistant rooms
+            request_fnc=lambda job: job.room.name.startswith("voice_assistant_room"),
         )
     )

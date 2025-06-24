@@ -114,7 +114,7 @@ export function MediaTiles({ chatOpen }: MediaTilesProps) {
     videoTrack: agentVideoTrack,
     agent: { isActive: isAgentActive = false } = {},
   } = useVoiceAssistant();
-  
+
   React.useEffect(() => {
     console.log("[MediaTiles] Voice assistant state:", {
       agentState,

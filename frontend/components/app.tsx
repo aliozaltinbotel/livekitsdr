@@ -38,7 +38,7 @@ export function App({ appConfig }: AppProps) {
   };
 
   const connectionDetails = useConnectionDetails();
-  
+
   React.useEffect(() => {
     if (connectionDetails) {
       console.log("[App] Connection details received:", {
@@ -66,19 +66,19 @@ export function App({ appConfig }: AppProps) {
     const onConnected = () => {
       console.log("[App] Room connected successfully");
     };
-    const onConnectionStateChanged = (state: any) => {
+    const onConnectionStateChanged = (state: string) => {
       console.log("[App] Room connection state changed:", state);
     };
-    const onParticipantConnected = (participant: any) => {
+    const onParticipantConnected = (participant: { identity: string }) => {
       console.log("[App] Participant connected:", participant);
     };
-    
+
     room.on(RoomEvent.MediaDevicesError, onMediaDevicesError);
     room.on(RoomEvent.Disconnected, onDisconnected);
     room.on(RoomEvent.Connected, onConnected);
     room.on(RoomEvent.ConnectionStateChanged, onConnectionStateChanged);
     room.on(RoomEvent.ParticipantConnected, onParticipantConnected);
-    
+
     return () => {
       room.off(RoomEvent.Disconnected, onDisconnected);
       room.off(RoomEvent.MediaDevicesError, onMediaDevicesError);
@@ -95,7 +95,7 @@ export function App({ appConfig }: AppProps) {
         serverUrl: connectionDetails.serverUrl,
         roomName: connectionDetails.roomName,
       });
-      
+
       Promise.all([
         room.localParticipant.setMicrophoneEnabled(true, undefined, {
           preConnectBuffer: true,
@@ -105,16 +105,16 @@ export function App({ appConfig }: AppProps) {
           connectionDetails.participantToken,
         ),
       ])
-      .then(() => {
-        console.log("[App] Room connection initiated successfully");
-      })
-      .catch((error) => {
-        console.error("[App] Error connecting to room:", error);
-        toastAlert({
-          title: "There was an error connecting to the agent",
-          description: `${error.name}: ${error.message}`,
+        .then(() => {
+          console.log("[App] Room connection initiated successfully");
+        })
+        .catch((error) => {
+          console.error("[App] Error connecting to room:", error);
+          toastAlert({
+            title: "There was an error connecting to the agent",
+            description: `${error.name}: ${error.message}`,
+          });
         });
-      });
     }
     return () => {
       if (room.state !== "disconnected") {

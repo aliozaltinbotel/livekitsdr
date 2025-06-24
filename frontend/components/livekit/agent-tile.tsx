@@ -21,7 +21,6 @@ export const AgentTile = ({
   React.useEffect(() => {
     console.log("[AgentTile] Agent state:", state);
   }, [state]);
-  
   return (
     <div ref={ref} className={cn(className)}>
       <BarVisualizer

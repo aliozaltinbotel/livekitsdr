@@ -726,7 +726,7 @@ if __name__ == "__main__":
             api_secret=os.getenv("LIVEKIT_API_SECRET"),
             ws_url=os.getenv("LIVEKIT_URL"),
             # Accept all job requests
-            request_fnc=lambda job: True,
+            request_fnc=lambda job: job.accept(),
             # Worker configuration
             agent_name="voice-assistant",
         )

@@ -25,6 +25,11 @@ api_client: Optional[PMSAPIClient] = None
 pms_tools: Optional[PMSTools] = None
 
 
+async def health_check(request: web.Request) -> web.Response:
+    """Health check endpoint"""
+    return web.json_response({"status": "healthy", "service": "pms-mcp-sse-server"})
+
+
 async def handle_sse(request: web.Request) -> web.Response:
     """Handle SSE connection for MCP protocol"""
     session_id = str(uuid.uuid4())
@@ -152,6 +157,7 @@ async def init_app() -> web.Application:
     app = web.Application()
     
     # Add routes
+    app.router.add_get("/health", health_check)
     app.router.add_get("/sse", handle_sse)
     app.router.add_post("/messages/", handle_messages)
     

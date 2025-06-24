@@ -5,7 +5,7 @@ import sys
 from datetime import datetime
 from dotenv import load_dotenv
 from livekit import agents, rtc
-from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, llm
+from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, llm, JobType
 
 # Configure logging
 log_level = os.getenv("LOG_LEVEL", "INFO")
@@ -728,7 +728,7 @@ if __name__ == "__main__":
             # Accept all job requests
             request_fnc=lambda job: True,
             # Worker configuration
-            job_type=agents.JobType.JT_ROOM,
+            job_type=JobType.JT_ROOM,
             agent_name="voice-assistant",
         )
     )

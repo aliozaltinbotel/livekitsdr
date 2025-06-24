@@ -63,28 +63,33 @@ if IS_PRODUCTION:
 
 class Assistant(Agent):
     def __init__(self) -> None:
+        logger.info("Initializing Assistant")
         # Initialize with tools - use direct tool if MCP not available
         tools = []
         mcp_servers = []
         
         # Try to use MCP if available, otherwise fall back to direct tool
         if mcp:
+            logger.info("MCP module is available, attempting to configure MCP server")
             try:
                 mcp_servers = [
                     mcp.MCPServerHTTP(
                         url=PMS_MCP_SERVER_URL
                     )
                 ]
-                logger.info(f"MCP server configured: {PMS_MCP_SERVER_URL}")
+                logger.info(f"MCP server configured successfully: {PMS_MCP_SERVER_URL}")
             except Exception as e:
-                logger.warning(f"Failed to configure MCP server: {e}")
+                logger.warning(f"Failed to configure MCP server: {e}", exc_info=True)
                 if get_customer_properties_context:
                     tools = [get_customer_properties_context]
                     logger.info("Using fallback tool: get_customer_properties_context")
         elif get_customer_properties_context:
             tools = [get_customer_properties_context]
             logger.info("MCP not available, using fallback tool")
+        else:
+            logger.warning("No MCP and no fallback tool available")
             
+        logger.info(f"Initializing Agent with {len(tools)} tools and {len(mcp_servers)} MCP servers")
         super().__init__(
             tools=tools,
             mcp_servers=mcp_servers,
@@ -315,25 +320,38 @@ IMPORTANT: The get_customer_properties_context tool is your PRIMARY source of pr
 
 async def entrypoint(ctx: JobContext):
     """Main entry point for the voice agent."""
+    logger.info("=== ENTRYPOINT STARTED ===")
+    logger.info(f"Job context: {ctx}")
+    logger.info(f"Job ID: {ctx.job.id}")
+    logger.info(f"Room: {ctx.room}")
+    
     try:
         # Start Supabase session logging
         room_name = getattr(ctx.room, 'name', None) or ctx.job.id
         session_id = None
         
+        logger.info(f"Room name: {room_name}")
+        logger.info(f"Participant identity: {getattr(ctx.job, 'participant_identity', None)}")
+        
         try:
+            logger.info("Starting Supabase session")
             session_id = await supabase_logger.start_session(
                 room_id=room_name,
                 job_id=ctx.job.id,
                 participant_id=getattr(ctx.job, 'participant_identity', None) or "unknown"
             )
+            logger.info(f"Supabase session started: {session_id}")
         except Exception as e:
             logger.error(f"Failed to start Supabase session: {e}")
             # Continue without session logging in production
         
         # Create the assistant first
+        logger.info("Creating Assistant instance")
         assistant = Assistant()
+        logger.info("Assistant created successfully")
         
         # Configure the voice session with AssemblyAI Universal Streaming
+        logger.info("Creating AgentSession")
         session = AgentSession(
             # AssemblyAI Universal Streaming for STT
             stt=assemblyai.STT(
@@ -371,34 +389,43 @@ async def entrypoint(ctx: JobContext):
             ),
             vad=silero.VAD.load(),  # Voice Activity Detection
         )
+        logger.info("AgentSession created successfully")
         
         # Connect to the room
+        logger.info("Connecting to room with AUDIO_ONLY subscription")
         await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+        logger.info("Connected to room successfully")
         
         # Start the agent session
+        logger.info("Starting agent session")
         await session.start(
             room=ctx.room,
             agent=assistant,
         )
+        logger.info("Agent session started successfully")
         
         
         # Generate initial greeting immediately
         initial_greeting = "Hi! I'm Jamie, your AI property manager. I can help you with information about our rental properties, check-in details, amenities, or any questions you might have. How can I assist you today?"
         
         # Start with immediate greeting
+        logger.info("Sending initial greeting to user")
         await session.say(initial_greeting)
+        logger.info("Initial greeting sent successfully")
         
         # Load property context in the background
         async def load_property_context():
+            logger.info("Starting background property context loading")
             try:
                 await session.generate_reply(
                     instructions="Use the get_customer_properties_context tool to load all property information. Do not say anything about loading or mention this to the user."
                 )
-                logging.info("Property context loaded in background")
+                logger.info("Property context loaded successfully in background")
             except Exception as e:
-                logging.error(f"Failed to load property context: {e}")
+                logger.error(f"Failed to load property context: {e}", exc_info=True)
         
         # Run context loading in background
+        logger.info("Creating background task for property context loading")
         asyncio.create_task(load_property_context())
         
         # Store the initial greeting as the context
@@ -532,9 +559,11 @@ async def entrypoint(ctx: JobContext):
         # The logs show only 'agent_state_changed' and 'user_input_transcribed' are available
         
         # Track user transcriptions
+        logger.info("Setting up user_input_transcribed event handler")
         @session.on("user_input_transcribed")
         def on_user_transcribed(data):
             """Log user transcribed speech."""
+            logger.info(f"USER_INPUT_TRANSCRIBED event received: {data}")
             # Extract text from the event data
             text = None
             if isinstance(data, str):
@@ -549,7 +578,7 @@ async def entrypoint(ctx: JobContext):
             if text:
                 if not IS_PRODUCTION:
                     print(f"User: {text}")
-                logging.info(f"User transcribed: {text}")
+                logger.info(f"User transcribed text: {text}")
                 asyncio.create_task(supabase_logger.log_message(
                     room_id=room_name,
                     participant_id=getattr(ctx.job, 'participant_identity', None) or "user",
@@ -704,9 +733,11 @@ async def entrypoint(ctx: JobContext):
         monitor_task = asyncio.create_task(monitor_conversation())
         
         # Ensure cleanup on any exit
+        logger.info("Agent is now running and waiting for interactions")
         try:
             await asyncio.Future()  # Keep running until cancelled
         except asyncio.CancelledError:
+            logger.info("Agent cancelled, cleaning up")
             monitor_task.cancel()
             if session_id:
                 await supabase_logger.end_session(room_name, 'cancelled')
@@ -716,8 +747,24 @@ async def entrypoint(ctx: JobContext):
         if session_id:
             await supabase_logger.end_session(room_name, 'error')
         raise
+    finally:
+        logger.info("=== ENTRYPOINT FINISHED ===")
+
+def accept_job(job):
+    """Accept job requests with logging."""
+    logger.info(f"Received job request: {job}")
+    logger.info(f"Job ID: {job.id}")
+    logger.info(f"Room name: {job.room.name}")
+    logger.info(f"Participant identity: {getattr(job, 'participant_identity', 'N/A')}")
+    logger.info("Accepting job request")
+    job.accept()
+    logger.info("Job accepted successfully")
 
 if __name__ == "__main__":
+    logger.info("Starting LiveKit agent")
+    logger.info(f"LiveKit URL: {os.getenv('LIVEKIT_URL')}")
+    logger.info(f"Agent name: voice-assistant")
+    
     # Run the agent with CLI
     cli.run_app(
         WorkerOptions(
@@ -726,7 +773,7 @@ if __name__ == "__main__":
             api_secret=os.getenv("LIVEKIT_API_SECRET"),
             ws_url=os.getenv("LIVEKIT_URL"),
             # Accept all job requests
-            request_fnc=lambda job: job.accept(),
+            request_fnc=accept_job,
             # Worker configuration
             agent_name="voice-assistant",
         )

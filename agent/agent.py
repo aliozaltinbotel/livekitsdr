@@ -55,7 +55,6 @@ except (ImportError, AttributeError):
 
 # Get MCP server URL from environment
 PMS_MCP_SERVER_URL = os.getenv("PMS_MCP_SERVER_URL", "http://localhost:3001/sse")
-PMS_MCP_SERVER_TOKEN = os.getenv("PMS_MCP_SERVER_TOKEN", "")
 
 # Production mode detection
 IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
@@ -73,10 +72,7 @@ class Assistant(Agent):
             try:
                 mcp_servers = [
                     mcp.MCPServerHTTP(
-                        url=PMS_MCP_SERVER_URL,
-                        headers={
-                            "Authorization": f"Bearer {PMS_MCP_SERVER_TOKEN}"
-                        } if PMS_MCP_SERVER_TOKEN else None
+                        url=PMS_MCP_SERVER_URL
                     )
                 ]
                 logger.info(f"MCP server configured: {PMS_MCP_SERVER_URL}")

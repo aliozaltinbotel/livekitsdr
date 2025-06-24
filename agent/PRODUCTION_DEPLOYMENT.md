@@ -50,7 +50,6 @@ Configure these secrets in your GitHub repository settings:
 #### PMS Integration
 - `PMS_BASE_URL`: Property Management System API URL
 - `PMS_API_KEY`: PMS API key
-- `MCP_AUTH_TOKEN`: Authentication token for MCP server
 
 ## Deployment Process
 
@@ -115,7 +114,6 @@ DEEPGRAM_API_KEY      # Deepgram API key (optional)
 # PMS Integration
 PMS_BASE_URL          # PMS API base URL
 PMS_API_KEY           # PMS API authentication key
-MCP_AUTH_TOKEN        # Bearer token for MCP authentication
 PMS_MCP_SERVER_URL    # Auto-set to http://localhost:3001/sse
 
 # Google Calendar (Optional)

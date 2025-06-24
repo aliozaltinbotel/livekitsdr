@@ -90,7 +90,6 @@ jobs:
                 SUPABASE_KEY="${{ secrets.SUPABASE_KEY }}" \
                 PMS_BASE_URL="${{ secrets.PMS_BASE_URL }}" \
                 PMS_API_KEY="${{ secrets.PMS_API_KEY }}" \
-                MCP_AUTH_TOKEN="${{ secrets.MCP_AUTH_TOKEN }}" \
                 ENVIRONMENT="production" \
                 LOG_LEVEL="INFO" \
               --cpu 1.5 \

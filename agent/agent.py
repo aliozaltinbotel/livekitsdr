@@ -727,5 +727,8 @@ if __name__ == "__main__":
             ws_url=os.getenv("LIVEKIT_URL"),
             # Accept all job requests
             request_fnc=lambda job: True,
+            # Worker configuration
+            job_type=agents.JobType.JT_ROOM,
+            agent_name="voice-assistant",
         )
     )

@@ -31,7 +31,11 @@ async def health_check(request: web.Request) -> web.Response:
 
 
 async def handle_sse(request: web.Request) -> web.Response:
-    """Handle SSE connection for MCP protocol"""
+    """Handle SSE connection for MCP protocol
+    
+    Note: No authentication required as this server runs in the same container
+    as the agent and is only accessible via localhost
+    """
     session_id = str(uuid.uuid4())
     message_queue = asyncio.Queue()
     sessions[session_id] = message_queue
@@ -63,6 +67,9 @@ async def handle_sse(request: web.Request) -> web.Response:
 async def handle_messages(request: web.Request) -> web.Response:
     """Handle POST messages from MCP client"""
     global pms_tools
+    
+    # Note: No authentication required as this server runs in the same container
+    # as the agent and is only accessible via localhost
     
     # Extract session ID
     session_id = request.query.get("session_id")
@@ -193,7 +200,8 @@ def main():
     logger.info(f"Messages endpoint: http://localhost:{port}/messages/")
     
     app = init_app()
-    web.run_app(app, host="0.0.0.0", port=port)
+    # Only listen on localhost for security (same container access only)
+    web.run_app(app, host="127.0.0.1", port=port)
 
 
 if __name__ == "__main__":

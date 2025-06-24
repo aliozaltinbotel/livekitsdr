@@ -185,7 +185,8 @@ def main():
     logger.info(f"RPC endpoint: http://localhost:{port}/rpc")
     
     app = init_app()
-    web.run_app(app, host="0.0.0.0", port=port)
+    # Only listen on localhost for security (same container access only)
+    web.run_app(app, host="127.0.0.1", port=port)
 
 
 if __name__ == "__main__":

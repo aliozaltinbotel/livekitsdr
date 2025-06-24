@@ -38,29 +38,64 @@ export function App({ appConfig }: AppProps) {
   };
 
   const connectionDetails = useConnectionDetails();
+  
+  React.useEffect(() => {
+    if (connectionDetails) {
+      console.log("[App] Connection details received:", {
+        serverUrl: connectionDetails.serverUrl,
+        roomName: connectionDetails.roomName,
+        participantName: connectionDetails.participantName,
+      });
+    }
+  }, [connectionDetails]);
 
   const room = React.useMemo(() => new Room(), []);
 
   React.useEffect(() => {
     const onDisconnected = () => {
+      console.log("[App] Room disconnected");
       setSessionStarted(false);
     };
     const onMediaDevicesError = (error: Error) => {
+      console.error("[App] Media devices error:", error);
       toastAlert({
         title: "Encountered an error with your media devices",
         description: `${error.name}: ${error.message}`,
       });
     };
+    const onConnected = () => {
+      console.log("[App] Room connected successfully");
+    };
+    const onConnectionStateChanged = (state: any) => {
+      console.log("[App] Room connection state changed:", state);
+    };
+    const onParticipantConnected = (participant: any) => {
+      console.log("[App] Participant connected:", participant);
+    };
+    
     room.on(RoomEvent.MediaDevicesError, onMediaDevicesError);
     room.on(RoomEvent.Disconnected, onDisconnected);
+    room.on(RoomEvent.Connected, onConnected);
+    room.on(RoomEvent.ConnectionStateChanged, onConnectionStateChanged);
+    room.on(RoomEvent.ParticipantConnected, onParticipantConnected);
+    
     return () => {
       room.off(RoomEvent.Disconnected, onDisconnected);
       room.off(RoomEvent.MediaDevicesError, onMediaDevicesError);
+      room.off(RoomEvent.Connected, onConnected);
+      room.off(RoomEvent.ConnectionStateChanged, onConnectionStateChanged);
+      room.off(RoomEvent.ParticipantConnected, onParticipantConnected);
     };
   }, [room]);
 
   React.useEffect(() => {
     if (sessionStarted && room.state === "disconnected" && connectionDetails) {
+      console.log("[App] Starting session with:", {
+        roomState: room.state,
+        serverUrl: connectionDetails.serverUrl,
+        roomName: connectionDetails.roomName,
+      });
+      
       Promise.all([
         room.localParticipant.setMicrophoneEnabled(true, undefined, {
           preConnectBuffer: true,
@@ -69,7 +104,12 @@ export function App({ appConfig }: AppProps) {
           connectionDetails.serverUrl,
           connectionDetails.participantToken,
         ),
-      ]).catch((error) => {
+      ])
+      .then(() => {
+        console.log("[App] Room connection initiated successfully");
+      })
+      .catch((error) => {
+        console.error("[App] Error connecting to room:", error);
         toastAlert({
           title: "There was an error connecting to the agent",
           description: `${error.name}: ${error.message}`,
@@ -77,7 +117,10 @@ export function App({ appConfig }: AppProps) {
       });
     }
     return () => {
-      room.disconnect();
+      if (room.state !== "disconnected") {
+        console.log("[App] Disconnecting from room");
+        room.disconnect();
+      }
     };
   }, [room, sessionStarted, connectionDetails]);
 

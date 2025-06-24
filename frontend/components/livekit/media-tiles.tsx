@@ -114,6 +114,15 @@ export function MediaTiles({ chatOpen }: MediaTilesProps) {
     videoTrack: agentVideoTrack,
     agent: { isActive: isAgentActive = false } = {},
   } = useVoiceAssistant();
+  
+  React.useEffect(() => {
+    console.log("[MediaTiles] Voice assistant state:", {
+      agentState,
+      isAgentActive,
+      hasAudioTrack: !!agentAudioTrack,
+      hasVideoTrack: !!agentVideoTrack,
+    });
+  }, [agentState, isAgentActive, agentAudioTrack, agentVideoTrack]);
   const [screenShareTrack] = useTracks([Track.Source.ScreenShare]);
   const cameraTrack: TrackReference | undefined = useLocalTrackRef(
     Track.Source.Camera,

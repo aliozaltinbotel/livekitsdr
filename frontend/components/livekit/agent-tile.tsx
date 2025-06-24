@@ -1,3 +1,4 @@
+import React from "react";
 import {
   type AgentState,
   BarVisualizer,
@@ -17,6 +18,10 @@ export const AgentTile = ({
   className,
   ref,
 }: React.ComponentProps<"div"> & AgentAudioTileProps) => {
+  React.useEffect(() => {
+    console.log("[AgentTile] Agent state:", state);
+  }, [state]);
+  
   return (
     <div ref={ref} className={cn(className)}>
       <BarVisualizer

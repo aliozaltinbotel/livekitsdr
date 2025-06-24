@@ -25,7 +25,7 @@ class SupabaseLogger:
         supabase_url = os.getenv("SUPABASE_URL")
         supabase_key = os.getenv("SUPABASE_KEY")
         
-        if supabase_url and supabase_key:
+        if supabase_url and supabase_key and not supabase_url.startswith("https://<your-project>"):
             try:
                 self.client = create_client(supabase_url, supabase_key)
                 logger.info("Supabase client initialized successfully")
@@ -33,7 +33,8 @@ class SupabaseLogger:
                 logger.error(f"Failed to initialize Supabase client: {e}")
                 self.client = None
         else:
-            logger.warning("Supabase credentials not found. Logging disabled.")
+            print("Supabase credentials not found. Logging disabled.")
+            self.client = None
     
     async def start_session(self, room_id: str, job_id: str, participant_id: str) -> Optional[str]:
         """Start a new session and return session ID"""

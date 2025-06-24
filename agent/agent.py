@@ -1,32 +1,97 @@
 import os
 import asyncio
+import logging
+import sys
 from datetime import datetime
+from dotenv import load_dotenv
 from livekit import agents, rtc
-from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, llm, mcp
+from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, llm
+
+# Configure logging
+log_level = os.getenv("LOG_LEVEL", "INFO")
+logging.basicConfig(
+    level=getattr(logging, log_level.upper()),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('agent.log')
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Validate required environment variables
+required_vars = [
+    "LIVEKIT_URL",
+    "LIVEKIT_API_KEY",
+    "LIVEKIT_API_SECRET",
+    "OPENAI_API_KEY",
+    "ASSEMBLYAI_API_KEY",
+    "CARTESIA_API_KEY"
+]
+
+missing_vars = [var for var in required_vars if not os.getenv(var)]
+if missing_vars:
+    logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+    sys.exit(1)
+try:
+    from livekit.agents.llm import mcp
+except ImportError:
+    logger.warning("MCP module not available, running without MCP support")
+    mcp = None
 from livekit.agents.voice import Agent, AgentSession
 from livekit.plugins import openai, silero, assemblyai, cartesia
 
 from response_cache import response_cache
 from supabase_logger import supabase_logger
 
+# Import the property context tool if MCP is not available
+try:
+    from pms_mcp_tools import get_customer_properties_context
+except (ImportError, AttributeError):
+    get_customer_properties_context = None
+
 # Get MCP server URL from environment
-PMS_MCP_SERVER_URL = os.getenv("PMS_MCP_SERVER_URL", "http://localhost:3001")
+PMS_MCP_SERVER_URL = os.getenv("PMS_MCP_SERVER_URL", "http://localhost:3001/sse")
 PMS_MCP_SERVER_TOKEN = os.getenv("PMS_MCP_SERVER_TOKEN", "")
+
+# Production mode detection
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
+if IS_PRODUCTION:
+    logger.info("Running in PRODUCTION mode")
 
 class Assistant(Agent):
     def __init__(self) -> None:
-        # Initialize with MCP servers only (no direct tools)
+        # Initialize with tools - use direct tool if MCP not available
+        tools = []
+        mcp_servers = []
+        
+        # Try to use MCP if available, otherwise fall back to direct tool
+        if mcp:
+            try:
+                mcp_servers = [
+                    mcp.MCPServerHTTP(
+                        url=PMS_MCP_SERVER_URL,
+                        headers={
+                            "Authorization": f"Bearer {PMS_MCP_SERVER_TOKEN}"
+                        } if PMS_MCP_SERVER_TOKEN else None
+                    )
+                ]
+                logger.info(f"MCP server configured: {PMS_MCP_SERVER_URL}")
+            except Exception as e:
+                logger.warning(f"Failed to configure MCP server: {e}")
+                if get_customer_properties_context:
+                    tools = [get_customer_properties_context]
+                    logger.info("Using fallback tool: get_customer_properties_context")
+        elif get_customer_properties_context:
+            tools = [get_customer_properties_context]
+            logger.info("MCP not available, using fallback tool")
+            
         super().__init__(
-            tools=[],
-            mcp_servers=[
-                # Connect to the PMS MCP server
-                mcp.MCPServerHTTP(
-                    url=PMS_MCP_SERVER_URL,
-                    headers={
-                        "Authorization": f"Bearer {PMS_MCP_SERVER_TOKEN}"
-                    } if PMS_MCP_SERVER_TOKEN else None
-                )
-            ],
+            tools=tools,
+            mcp_servers=mcp_servers,
             instructions="""====================================================================
 IDENTITY & ROLE
 ====================================================================
@@ -222,8 +287,13 @@ TECHNICAL ISSUES (10 second silence):
 ====================================================================
 PROPERTY CONTEXT AWARENESS
 ====================================================================
-ALWAYS use the get_customer_properties_context tool when:
+CRITICAL: At the START of EVERY conversation, you MUST:
+1. IMMEDIATELY call get_customer_properties_context tool BEFORE greeting
+2. Load all property information into your context
+3. Then greet the user mentioning how many properties you manage
 
+ALWAYS use the get_customer_properties_context tool when:
+- At the beginning of EVERY conversation (MANDATORY)
 - Guest asks about available properties
 - Guest wants specific property details
 - Guest asks about amenities or features
@@ -238,23 +308,29 @@ The tool provides:
 - Property types and features
 - Detailed descriptions
 
-Example usage:
-- "Let me show you our available properties..."
-- "I can see we have [X] properties in our portfolio..."
-- "Our properties include..."
+Example initial greeting (AFTER loading context):
+- "Hi! I'm Jamie, your AI property manager. I've just loaded information about our [X] rental properties..."
+- "Hello! I'm Jamie, managing [X] properties in [locations]. How can I help you today?"
 
-IMPORTANT: This is your PRIMARY source of property information. Use it whenever property details are needed."""
+IMPORTANT: This is your PRIMARY source of property information. Load it FIRST, use it ALWAYS."""
         )
 
 async def entrypoint(ctx: JobContext):
     """Main entry point for the voice agent."""
-    # Start Supabase session logging
-    room_name = getattr(ctx.room, 'name', None) or ctx.job.id
-    session_id = await supabase_logger.start_session(
-        room_id=room_name,
-        job_id=ctx.job.id,
-        participant_id=getattr(ctx.job, 'participant_identity', None) or "unknown"
-    )
+    try:
+        # Start Supabase session logging
+        room_name = getattr(ctx.room, 'name', None) or ctx.job.id
+        session_id = None
+        
+        try:
+            session_id = await supabase_logger.start_session(
+                room_id=room_name,
+                job_id=ctx.job.id,
+                participant_id=getattr(ctx.job, 'participant_identity', None) or "unknown"
+            )
+        except Exception as e:
+            logger.error(f"Failed to start Supabase session: {e}")
+            # Continue without session logging in production
     
     # Create the assistant first
     assistant = Assistant()
@@ -274,12 +350,10 @@ async def entrypoint(ctx: JobContext):
             # Minimum silence duration when confident about end of turn (160ms default)
             min_end_of_turn_silence_when_confident=160,
         ),
-        # Azure OpenAI for LLM - Using mini model for 2x faster responses
-        llm=openai.LLM.with_azure(
+        # OpenAI for LLM - Using mini model for 2x faster responses
+        llm=openai.LLM(
             model="gpt-4o-mini",  # 2x faster than gpt-4o (150ms vs 350ms) - v2
-            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-            azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_MINI", os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")),
-            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
+            api_key=os.getenv("OPENAI_API_KEY"),
             temperature=0.5,  # Lower temperature for more consistent/faster responses
         ),
         # Cartesia TTS with Sonic Turbo for ultra-low latency
@@ -309,23 +383,30 @@ async def entrypoint(ctx: JobContext):
         agent=assistant,
     )
     
-    # Import logging for debugging
-    import logging
     
-    # Generate initial greeting (optimized for speed)
-    initial_greeting = "Hi! I'm Jamie, your AI property manager. I can help you with information about our rental properties, check-in details, amenities, or any questions you might have. How can I assist you today?"
+    # Generate initial greeting with property context instruction
+    initial_greeting_instruction = """First, use the get_customer_properties_context tool to load all property information.
+    
+Once you have the property context loaded, greet the user saying: "Hi! I'm Jamie, your AI property manager. I've just loaded information about our [X] rental properties. I can help you with property details, check-in information, amenities, or any questions you might have. How can I assist you today?"
+
+Replace [X] with the actual number of properties you found.
+
+If the tool fails or no properties are found, say: "Hi! I'm Jamie, your AI property manager. I can help you with information about our rental properties, check-in details, amenities, or any questions you might have. How can I assist you today?"
+
+IMPORTANT: You MUST call the get_customer_properties_context tool first before greeting."""
+    
     await session.generate_reply(
-        instructions=f"Say EXACTLY: '{initial_greeting}'"
+        instructions=initial_greeting_instruction
     )
     
-    # Store the initial greeting as the first agent message
-    last_agent_message = initial_greeting
-    logging.info(f"Initial agent greeting: {initial_greeting}")
+    # Store the initial greeting instruction as the context
+    last_agent_message = "Loading property context..."
+    logging.info("Agent starting with property context loading")
     asyncio.create_task(supabase_logger.log_message(
         room_id=room_name,
         participant_id="agent",
         role="agent",
-        message=initial_greeting
+        message="Loading property context..."
     ))
     
     # Track collected user data and context
@@ -464,7 +545,8 @@ async def entrypoint(ctx: JobContext):
             text = str(data)
             
         if text:
-            print(f"User: {text}")
+            if not IS_PRODUCTION:
+                print(f"User: {text}")
             logging.info(f"User transcribed: {text}")
             asyncio.create_task(supabase_logger.log_message(
                 room_id=room_name,
@@ -485,7 +567,8 @@ async def entrypoint(ctx: JobContext):
             text = state.current_speech
             nonlocal last_agent_message
             last_agent_message = text
-            print(f"Agent: {text}")
+            if not IS_PRODUCTION:
+                print(f"Agent: {text}")
             asyncio.create_task(supabase_logger.log_message(
                 room_id=room_name,
                 participant_id="agent",
@@ -500,7 +583,8 @@ async def entrypoint(ctx: JobContext):
             """Log agent speech if event is available."""
             nonlocal last_agent_message
             last_agent_message = text
-            print(f"Agent: {text}")
+            if not IS_PRODUCTION:
+                print(f"Agent: {text}")
             logging.info(f"Agent speech committed: {text}")
             asyncio.create_task(supabase_logger.log_message(
                 room_id=room_name,
@@ -515,7 +599,8 @@ async def entrypoint(ctx: JobContext):
         @session.on("user_speech_committed")
         def on_user_speech(text: str):
             """Log user speech if event is available."""
-            print(f"User: {text}")
+            if not IS_PRODUCTION:
+                print(f"User: {text}")
             logging.info(f"User speech committed: {text}")
             asyncio.create_task(supabase_logger.log_message(
                 room_id=room_name,
@@ -594,7 +679,8 @@ async def entrypoint(ctx: JobContext):
                             if msg.role == 'assistant':
                                 nonlocal last_agent_message
                                 last_agent_message = msg.content
-                                print(f"[HISTORY] Agent: {msg.content}")
+                                if not IS_PRODUCTION:
+                                    print(f"[HISTORY] Agent: {msg.content}")
                                 logging.info(f"Agent from history: {msg.content}")
                                 asyncio.create_task(supabase_logger.log_message(
                                     room_id=room_name,
@@ -615,12 +701,18 @@ async def entrypoint(ctx: JobContext):
     # Start conversation monitor
     monitor_task = asyncio.create_task(monitor_conversation())
     
-    # Ensure cleanup on any exit
-    try:
-        await asyncio.Future()  # Keep running until cancelled
-    except asyncio.CancelledError:
-        monitor_task.cancel()
-        await supabase_logger.end_session(room_name, 'cancelled')
+        # Ensure cleanup on any exit
+        try:
+            await asyncio.Future()  # Keep running until cancelled
+        except asyncio.CancelledError:
+            monitor_task.cancel()
+            if session_id:
+                await supabase_logger.end_session(room_name, 'cancelled')
+            raise
+    except Exception as e:
+        logger.error(f"Critical error in entrypoint: {e}", exc_info=True)
+        if session_id:
+            await supabase_logger.end_session(room_name, 'error')
         raise
 
 if __name__ == "__main__":

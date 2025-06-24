@@ -53,8 +53,17 @@ async def handle_rpc(request: web.Request) -> web.Response:
     global pms_tools
     
     try:
-        # Parse request
-        data = await request.json()
+        # Parse request - handle both GET and POST
+        if request.method == "POST":
+            data = await request.json()
+        else:
+            # For GET requests, parse query parameters
+            data = {
+                "method": request.query.get("method", ""),
+                "params": json.loads(request.query.get("params", "{}")),
+                "id": request.query.get("id", 1)
+            }
+        
         method = data.get("method")
         params = data.get("params", {})
         request_id = data.get("id", 1)
@@ -126,7 +135,7 @@ async def init_app() -> web.Application:
     global api_client, pms_tools
     
     # Get configuration
-    base_url = os.getenv("PMS_API_URL", "https://api-dev.botel.ai")
+    base_url = os.getenv("PMS_BASE_URL", os.getenv("PMS_API_URL", "https://pms.botel.ai"))
     api_key = os.getenv("PMS_API_KEY")
     
     if not api_key:
@@ -143,6 +152,7 @@ async def init_app() -> web.Application:
     app.router.add_get("/health", health_check)
     app.router.add_get("/tools", list_tools)
     app.router.add_post("/rpc", handle_rpc)
+    app.router.add_get("/rpc", handle_rpc)  # Support GET for SSE transport
     
     # Add CORS middleware
     async def cors_middleware(app, handler):

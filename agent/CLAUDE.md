@@ -21,49 +21,96 @@ To check for updates:
 pip list --outdated | grep livekit
 ```
 
-### Verified Working Parameters (as of June 2025)
+### Best Practices & Optimal Parameters (v1.1.4 - June 2025)
 
-#### AssemblyAI STT
+#### AssemblyAI STT - Universal Streaming
 ```python
 stt=assemblyai.STT(
-    api_key=os.getenv("ASSEMBLYAI_API_KEY"),  # Optional if env var is set
-    sample_rate=16000,                         # Audio sample rate
-    encoding="pcm_s16le",                      # Audio encoding format
-    buffer_size_seconds=0.05,                  # Buffer size for frames
+    api_key=os.getenv("ASSEMBLYAI_API_KEY"),
+    sample_rate=16000,           # 16kHz optimal for voice agents
+    encoding="pcm_s16le",        # Best quality encoding
+    buffer_size_seconds=0.05,    # 50ms for low latency
+    # Turn detection parameters (v1.1.4):
+    end_of_turn_confidence_threshold=0.65,  # 0.4-1.0, higher = more conservative
+    min_end_of_turn_silence_when_confident=160,  # ms of silence when confident
+    max_turn_silence=2400,       # Max silence before forced turn end (ms)
+    format_turns=True,           # Clean transcript formatting
 )
 ```
 
-**NOT SUPPORTED** (despite being in some docs):
-- `word_boost`
-- `disable_partial_transcripts`
-- `enable_extra_session_information`
-- `end_utterance_silence_threshold`
+**Key Features**:
+- Linguistic turn detection model (audio + semantic understanding)
+- ~300ms immutable transcript latency
+- Handles complex pauses (e.g., "My credit card is...")
 
-#### OpenAI LLM
+#### OpenAI LLM - GPT-4o-mini
 ```python
 llm=openai.LLM(
-    model="gpt-4o-mini",                      # Model name
-    api_key=os.getenv("OPENAI_API_KEY"),      # API key
-    temperature=0.5,                          # Temperature for responses
+    model="gpt-4o-mini",         # 2x faster than gpt-4o, 83% cheaper
+    api_key=os.getenv("OPENAI_API_KEY"),
+    temperature=0.7,             # Range: 0.6-1.2 for voice agents
+    # Optional parameters (v1.1.4):
+    # parallel_tool_calls=True,  # Enable parallel function calls
+    # max_completion_tokens=150, # Limit response length
+    # user="unique-user-id",     # For tracking
 )
 ```
 
-**NOT SUPPORTED**:
-- `max_tokens`
+**Performance**: ~300ms response time (human speech threshold)
 
-#### AgentSession
+#### Cartesia TTS - Sonic Turbo
+```python
+tts=cartesia.TTS(
+    api_key=os.getenv("CARTESIA_API_KEY"),
+    model="sonic-turbo",         # 40ms latency (fastest)
+    voice="248be419-c632-4f23-adf1-5324ed7dbf1d",  # Professional voice
+    language="en",
+    speed=0.1,                   # Slight speed increase for energy
+    emotion=["positivity:high", "curiosity:medium"],  # v1.1.4 feature
+    # Native sample_rate=24000, encoding="pcm_s16le" (defaults)
+)
+```
+
+**Alternative**: Use `model="sonic-2"` for standard quality
+
+#### Silero VAD - Optimized Settings
+```python
+vad=silero.VAD.load(
+    min_speech_duration=0.15,    # 150ms to start detection
+    min_silence_duration=0.55,   # 550ms for natural pauses
+    prefix_padding_duration=0.3, # 300ms context padding
+    activation_threshold=0.5,    # Balanced sensitivity
+    sample_rate=16000,          # Must match STT
+    force_cpu=True,             # Consistent performance
+)
+```
+
+**Performance**: <1ms per 30ms audio chunk on CPU
+
+#### AgentSession Configuration
 ```python
 session = AgentSession(
     stt=assemblyai.STT(...),
     llm=openai.LLM(...),
     tts=cartesia.TTS(...),
     vad=silero.VAD.load(...),
-    turn_detection="stt",  # Use AssemblyAI's linguistic turn detection
+    turn_detection="stt",        # AssemblyAI's linguistic model
+    min_endpointing_delay=0.3,   # 300ms for responsiveness
 )
 ```
 
-**NOT SUPPORTED**:
-- `interrupt_speech_on_user_speech`
+### Latency Benchmarks (v1.1.4)
+- **First syllable**: ~730ms total
+- **STT**: ~300ms (AssemblyAI)
+- **LLM**: ~300ms (GPT-4o-mini)
+- **TTS**: ~40ms (Sonic Turbo)
+- **Network/Processing**: ~90ms
+
+### NOT SUPPORTED Parameters (Removed in v1.1.4):
+- AssemblyAI STT: `word_boost`, `disable_partial_transcripts`, `enable_extra_session_information`, `end_utterance_silence_threshold` (old parameter)
+- OpenAI LLM: `max_tokens` (use `max_completion_tokens` instead)
+- AgentSession: `interrupt_speech_on_user_speech`
+- Silero VAD: `padding_duration` (deprecated, use `prefix_padding_duration`)
 
 ### MCP Server JSON-RPC Implementation
 

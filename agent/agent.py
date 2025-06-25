@@ -360,55 +360,81 @@ async def entrypoint(ctx: JobContext):
         assistant = Assistant()
         logger.info("Assistant created successfully")
         
-        # Configure the voice session with AssemblyAI Universal Streaming
-        logger.info("Creating AgentSession")
+        # Configure the voice session with optimized parameters for v1.1.4
+        logger.info("Creating AgentSession with optimized v1.1.4 parameters")
         session = AgentSession(
             # AssemblyAI Universal Streaming for STT
-            # Note: Many parameters shown in docs (word_boost, partial transcripts, etc.) 
-            # are not supported in the current LiveKit plugin version.
-            # Turn detection is configured via turn_detection="stt" below.
+            # Optimized for conversational AI with v1.1.4
             stt=assemblyai.STT(
                 # API key will be read from ASSEMBLYAI_API_KEY env var if not provided
                 api_key=os.getenv("ASSEMBLYAI_API_KEY"),
-                # Sample rate for audio (16kHz is standard for telephony)
+                # Sample rate for audio (16kHz is optimal for voice agents)
                 sample_rate=16000,
-                # Audio encoding format (pcm_s16le or pcm_mulaw)
+                # Audio encoding format (pcm_s16le recommended for quality)
                 encoding="pcm_s16le",
-                # Buffer size for audio frames (default 0.05 seconds)
-                # Smaller buffer = lower latency, larger buffer = better efficiency
+                # Buffer size optimized for low latency (50ms)
                 buffer_size_seconds=0.05,
+                # Turn detection parameters (v1.1.4):
+                # Confidence threshold for end-of-turn (0.65 LiveKit default, 0.4 API default)
+                end_of_turn_confidence_threshold=0.65,
+                # Minimum silence when confident (160ms default)
+                min_end_of_turn_silence_when_confident=160,
+                # Maximum silence before forced turn end (2400ms default)
+                max_turn_silence=2400,
+                # Format turns for cleaner transcripts
+                format_turns=True,
             ),
-            # OpenAI for LLM - Using mini model for 2x faster responses
+            # OpenAI GPT-4o-mini - Optimized for speed and quality
             llm=openai.LLM(
-                model="gpt-4o-mini",  # 2x faster than gpt-4o (150ms vs 350ms) - v2
+                model="gpt-4o-mini",  # 2x faster than gpt-4o with similar quality
                 api_key=os.getenv("OPENAI_API_KEY"),
-                temperature=0.5,  # Lower temperature for more consistent/faster responses
+                # Temperature 0.7 provides good balance between creativity and consistency
+                # Valid range for voice agents: 0.6-1.2
+                temperature=0.7,
+                # Note: v1.1.4 supports streaming by default
             ),
-            # Cartesia TTS with Sonic Turbo for ultra-low latency
+            # Cartesia TTS with Sonic Turbo - Industry-leading latency
             tts=cartesia.TTS(
                 # API key will be read from CARTESIA_API_KEY env var if not provided
                 api_key=os.getenv("CARTESIA_API_KEY"),
-                # Model options: "sonic-turbo" (40ms latency) or "sonic" (90ms latency)
+                # Sonic-turbo: 40ms latency (fastest available)
+                # Alternative: "sonic-2" for standard quality
                 model="sonic-turbo",
-                # Voice ID - using a professional voice suitable for business calls
-                voice="248be419-c632-4f23-adf1-5324ed7dbf1d",  # Professional English voice
-                # Language code
+                # Professional female voice ID (clear and friendly)
+                # Alternative voices available in Cartesia dashboard
+                voice="248be419-c632-4f23-adf1-5324ed7dbf1d",
+                # ISO-639-1 language code
                 language="en",
-                # Speed: -1.0 to 1.0 (0 is normal) or "fastest", "fast", "normal", "slow", "slowest"
-                speed=0.0,  # Normal speed
-                # Emotion control for more natural speech (experimental)
-                emotion=["positivity:high"],  # Friendly, positive tone
+                # Speed: 0.0 is normal, range -1.0 to 1.0
+                # Slight speed increase (0.1) for more energetic delivery
+                speed=0.1,
+                # Emotion control (v1.1.4 feature)
+                # Options: positivity, curiosity, surprise, sadness, anger, intensity
+                emotion=["positivity:high", "curiosity:medium"],
+                # Sample rate (24kHz is Cartesia's native rate)
+                # encoding="pcm_s16le",  # Default, no need to specify
             ),
+            # Silero VAD - Optimized for conversation flow
             vad=silero.VAD.load(
-                # Adjust min speech duration to prevent false positives
+                # Minimum speech duration to start detection (150ms optimal)
                 min_speech_duration=0.15,
-                # Adjust min silence duration to allow natural pauses
-                min_silence_duration=0.5,
+                # Minimum silence to end speech (550ms for natural pauses)
+                min_silence_duration=0.55,
+                # Prefix padding for context (500ms default, 300ms for faster response)
+                prefix_padding_duration=0.3,
+                # Activation threshold (0.5 is balanced)
+                activation_threshold=0.5,
+                # Sample rate must match STT
+                sample_rate=16000,
+                # Force CPU for consistent performance
+                force_cpu=True,
             ),  # Voice Activity Detection for interruption handling
-            # Use AssemblyAI's built-in turn detection model
-            # This uses both audio and linguistic information for better turn boundary detection
-            # The model can handle complex scenarios like pauses during credit card entry
+            # Use AssemblyAI's linguistic turn detection (v1.1.4 feature)
+            # Combines audio + semantic understanding for accurate turn boundaries
+            # Handles complex scenarios: pauses, thinking time, incomplete sentences
             turn_detection="stt",
+            # Minimum end-of-turn delay (300ms for responsive conversation)
+            min_endpointing_delay=0.3,
         )
         logger.info("AgentSession created successfully")
         

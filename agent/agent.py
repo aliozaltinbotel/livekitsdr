@@ -750,14 +750,14 @@ async def entrypoint(ctx: JobContext):
     finally:
         logger.info("=== ENTRYPOINT FINISHED ===")
 
-def accept_job(job):
+async def accept_job(job):
     """Accept job requests with logging."""
     logger.info(f"Received job request: {job}")
     logger.info(f"Job ID: {job.id}")
     logger.info(f"Room name: {job.room.name}")
     logger.info(f"Participant identity: {getattr(job, 'participant_identity', 'N/A')}")
     logger.info("Accepting job request")
-    job.accept()
+    await job.accept()  # Correct way to accept a job in LiveKit SDK
     logger.info("Job accepted successfully")
 
 if __name__ == "__main__":

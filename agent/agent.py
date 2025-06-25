@@ -384,8 +384,6 @@ async def entrypoint(ctx: JobContext):
                 api_key=os.getenv("OPENAI_API_KEY"),
                 temperature=0.5,  # Lower temperature for more consistent/faster responses
             ),
-            # Interrupt on user speech for better responsiveness
-            interrupt_speech_on_user_speech=True,
             # Cartesia TTS with Sonic Turbo for ultra-low latency
             tts=cartesia.TTS(
                 # API key will be read from CARTESIA_API_KEY env var if not provided

@@ -130,7 +130,12 @@ async def handle_messages(request: web.Request) -> web.Response:
                 
                 try:
                     tool_result = await pms_tools.execute_tool(tool_name, arguments)
-                    result = {"content": tool_result}
+                    # Convert TextContent objects to dictionaries
+                    if isinstance(tool_result, list):
+                        content = [{"type": item.type, "text": item.text} for item in tool_result]
+                    else:
+                        content = tool_result
+                    result = {"content": content}
                 except Exception as e:
                     error = {"code": -32603, "message": str(e)}
         

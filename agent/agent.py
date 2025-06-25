@@ -383,7 +383,6 @@ async def entrypoint(ctx: JobContext):
                 model="gpt-4o-mini",  # 2x faster than gpt-4o (150ms vs 350ms) - v2
                 api_key=os.getenv("OPENAI_API_KEY"),
                 temperature=0.5,  # Lower temperature for more consistent/faster responses
-                max_tokens=150,  # Limit response length to prevent truncation
             ),
             # Cartesia TTS with Sonic Turbo for ultra-low latency
             tts=cartesia.TTS(

@@ -37,29 +37,28 @@ export async function GET() {
     const participantName = "user";
     const participantIdentity = `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
     const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10_000)}`;
-    
+
     // Create room explicitly to trigger agent dispatch
-    const roomService = new RoomServiceClient(
-      LIVEKIT_URL,
-      API_KEY,
-      API_SECRET
-    );
-    
+    const roomService = new RoomServiceClient(LIVEKIT_URL, API_KEY, API_SECRET);
+
     try {
       // Create room with metadata to help with agent dispatch
       await roomService.createRoom({
         name: roomName,
         metadata: JSON.stringify({
           requires_agent: true,
-          agent_type: "voice_assistant"
+          agent_type: "voice_assistant",
         }),
       });
       console.log(`Room ${roomName} created successfully`);
     } catch (error) {
       // Room might already exist, that's ok
-      console.log(`Room ${roomName} creation error (might already exist):`, error);
+      console.log(
+        `Room ${roomName} creation error (might already exist):`,
+        error,
+      );
     }
-    
+
     const participantToken = await createParticipantToken(
       { identity: participantIdentity, name: participantName },
       roomName,

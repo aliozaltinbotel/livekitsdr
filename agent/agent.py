@@ -765,6 +765,12 @@ if __name__ == "__main__":
     logger.info(f"LiveKit URL: {os.getenv('LIVEKIT_URL')}")
     logger.info(f"Agent name: voice-assistant")
     
+    # Define a simple request function that accepts all jobs
+    async def accept_all_jobs(job):
+        """Accept all job requests."""
+        logger.info(f"Received job request for room: {job.room.name}")
+        await job.accept()
+    
     # Run the agent with CLI
     cli.run_app(
         WorkerOptions(
@@ -772,5 +778,6 @@ if __name__ == "__main__":
             api_key=os.getenv("LIVEKIT_API_KEY"),
             api_secret=os.getenv("LIVEKIT_API_SECRET"),
             ws_url=os.getenv("LIVEKIT_URL"),
+            request_fnc=accept_all_jobs,
         )
     )

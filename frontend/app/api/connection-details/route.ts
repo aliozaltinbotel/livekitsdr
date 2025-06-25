@@ -3,7 +3,6 @@ import {
   AccessToken,
   type AccessTokenOptions,
   type VideoGrant,
-  RoomServiceClient,
 } from "livekit-server-sdk";
 
 // NOTE: you are expected to define the following environment variables in `.env.local`:
@@ -37,25 +36,6 @@ export async function GET() {
     const participantName = "user";
     const participantIdentity = `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
     const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10_000)}`;
-    
-    // Create RoomServiceClient to dispatch agent
-    const roomServiceClient = new RoomServiceClient(LIVEKIT_URL, API_KEY, API_SECRET);
-    
-    // Create room with agent dispatch
-    try {
-      await roomServiceClient.createRoom({
-        name: roomName,
-        // empty options to create room
-      });
-      
-      // Dispatch agent to the room
-      await roomServiceClient.createDispatch(roomName, {
-        // No agent name specified = dispatch to default agent
-      });
-    } catch (error) {
-      console.log("Room might already exist or dispatch failed:", error);
-    }
-    
     const participantToken = await createParticipantToken(
       { identity: participantIdentity, name: participantName },
       roomName,

@@ -750,34 +750,9 @@ async def entrypoint(ctx: JobContext):
     finally:
         logger.info("=== ENTRYPOINT FINISHED ===")
 
-async def accept_job(job):
-    """Accept job requests with logging."""
-    logger.info(f"Received job request: {job}")
-    logger.info(f"Job ID: {job.id}")
-    logger.info(f"Room name: {job.room.name}")
-    logger.info(f"Participant identity: {getattr(job, 'participant_identity', 'N/A')}")
-    logger.info("Accepting job request")
-    await job.accept()  # Correct way to accept a job in LiveKit SDK
-    logger.info("Job accepted successfully")
-
 if __name__ == "__main__":
     logger.info("Starting LiveKit agent")
     logger.info(f"LiveKit URL: {os.getenv('LIVEKIT_URL')}")
-    logger.info(f"Agent name: voice-assistant")
     
-    # Define a simple request function that accepts all jobs
-    async def accept_all_jobs(job):
-        """Accept all job requests."""
-        logger.info(f"Received job request for room: {job.room.name}")
-        await job.accept()
-    
-    # Run the agent with CLI
-    cli.run_app(
-        WorkerOptions(
-            entrypoint_fnc=entrypoint,
-            api_key=os.getenv("LIVEKIT_API_KEY"),
-            api_secret=os.getenv("LIVEKIT_API_SECRET"),
-            ws_url=os.getenv("LIVEKIT_URL"),
-            request_fnc=accept_all_jobs,
-        )
-    )
+    # Run the agent with CLI - following official LiveKit examples pattern
+    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))

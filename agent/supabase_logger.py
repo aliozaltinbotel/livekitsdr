@@ -8,8 +8,31 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 import logging
 from supabase import create_client, Client
+import httpx
+from functools import wraps
+import time
 
 logger = logging.getLogger(__name__)
+
+def retry_on_error(max_retries=3, delay=1.0):
+    """Decorator to retry failed operations"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            last_error = None
+            for attempt in range(max_retries):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    last_error = e
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
+                        await asyncio.sleep(delay)
+                    else:
+                        logger.error(f"All {max_retries} attempts failed. Last error: {e}")
+            raise last_error
+        return wrapper
+    return decorator
 
 class SupabaseLogger:
     """Handles all Supabase logging for sessions and conversations"""
@@ -18,6 +41,7 @@ class SupabaseLogger:
         self.client: Optional[Client] = None
         self.current_session_id: Optional[str] = None
         self.session_data: Dict[str, Any] = {}
+        self._http_client: Optional[httpx.AsyncClient] = None
         self._initialize_client()
     
     def _initialize_client(self):
@@ -27,13 +51,30 @@ class SupabaseLogger:
         
         if supabase_url and supabase_key and not supabase_url.startswith("https://<your-project>"):
             try:
+                # Create custom HTTP client with proper settings
+                transport = httpx.HTTPTransport(
+                    retries=3,
+                    http2=True,
+                    limits=httpx.Limits(
+                        max_keepalive_connections=5,
+                        max_connections=10,
+                        keepalive_expiry=30.0
+                    )
+                )
+                
+                # Create async client for better connection management
+                self._http_client = httpx.AsyncClient(
+                    transport=transport,
+                    timeout=httpx.Timeout(30.0)
+                )
+                
                 self.client = create_client(supabase_url, supabase_key)
                 logger.info("Supabase client initialized successfully")
             except Exception as e:
                 logger.error(f"Failed to initialize Supabase client: {e}")
                 self.client = None
         else:
-            print("Supabase credentials not found. Logging disabled.")
+            logger.info("Supabase credentials not found. Logging disabled.")
             self.client = None
     
     async def start_session(self, room_id: str, job_id: str, participant_id: str) -> Optional[str]:
@@ -111,6 +152,7 @@ class SupabaseLogger:
         except Exception as e:
             logger.error(f"Error ending session: {e}")
     
+    @retry_on_error(max_retries=2, delay=0.5)
     async def log_message(self, room_id: str, participant_id: str, role: str, message: str, 
                          confidence: Optional[float] = None, metadata: Optional[Dict] = None):
         """Log a conversation message"""
@@ -118,6 +160,10 @@ class SupabaseLogger:
             return
         
         try:
+            # Ensure message is not too long for JSON
+            if len(message) > 10000:
+                message = message[:10000] + "... (truncated)"
+            
             message_data = {
                 'session_id': room_id,
                 'room_id': room_id,
@@ -140,20 +186,30 @@ class SupabaseLogger:
         except Exception as e:
             logger.error(f"Error logging message: {e}")
     
+    @retry_on_error(max_retries=2, delay=0.5)
     async def update_session_data(self, room_id: str, data: Dict[str, Any]):
         """Update session with collected user data"""
         if not self.client:
             logger.warning("No Supabase client available for update")
             return
         
+        # Validate and clean data
+        cleaned_data = {}
+        for key, value in data.items():
+            if value is not None and value != "":
+                # Ensure strings are not too long
+                if isinstance(value, str) and len(value) > 1000:
+                    value = value[:1000]
+                cleaned_data[key] = value
+        
         # Store data locally
-        self.session_data.update(data)
+        self.session_data.update(cleaned_data)
         
         try:
             # Update in database
             update_data = {
                 'updated_at': datetime.utcnow().isoformat(),
-                **data
+                **cleaned_data
             }
             
             logger.info(f"Updating session {room_id} with data: {update_data}")
@@ -163,7 +219,7 @@ class SupabaseLogger:
             )
             
             if result.data and len(result.data) > 0:
-                logger.info(f"Session data updated successfully for {room_id}: {data}")
+                logger.info(f"Session data updated successfully for {room_id}: {cleaned_data}")
                 logger.info(f"Updated rows: {len(result.data)}")
             else:
                 logger.warning(f"No rows updated for session {room_id}")
@@ -173,7 +229,7 @@ class SupabaseLogger:
                     'session_id': room_id,
                     'started_at': datetime.utcnow().isoformat(),
                     'status': 'active',
-                    **data
+                    **cleaned_data
                 }
                 create_result = await asyncio.to_thread(
                     lambda: self.client.table('sessions').upsert(session_data).execute()

@@ -14,8 +14,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy and install MCP server requirements
-COPY pms_mcp_server/requirements.txt /app/pms_mcp_server/
+# Copy MCP server code first
+COPY pms_mcp_server/ /app/pms_mcp_server/
+
+# Install MCP server requirements
 RUN pip install --no-cache-dir -r pms_mcp_server/requirements.txt
 
 # Copy application code

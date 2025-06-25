@@ -19,6 +19,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Reduce verbosity of HTTP/2 and httpx logging
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("hpack").setLevel(logging.WARNING)
+logging.getLogger("httpcore.http2").setLevel(logging.WARNING)
+logging.getLogger("httpcore.connection").setLevel(logging.WARNING)
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -368,12 +375,15 @@ async def entrypoint(ctx: JobContext):
                 end_of_turn_confidence_threshold=0.7,
                 # Minimum silence duration when confident about end of turn (160ms default)
                 min_end_of_turn_silence_when_confident=160,
+                # Increase end utterance silence threshold to prevent early cutoffs
+                end_utterance_silence_threshold=1.0,
             ),
             # OpenAI for LLM - Using mini model for 2x faster responses
             llm=openai.LLM(
                 model="gpt-4o-mini",  # 2x faster than gpt-4o (150ms vs 350ms) - v2
                 api_key=os.getenv("OPENAI_API_KEY"),
                 temperature=0.5,  # Lower temperature for more consistent/faster responses
+                max_tokens=150,  # Limit response length to prevent truncation
             ),
             # Cartesia TTS with Sonic Turbo for ultra-low latency
             tts=cartesia.TTS(
@@ -508,7 +518,10 @@ async def entrypoint(ctx: JobContext):
                         potential_name = words[0].capitalize()
                         
                         # Exclude common non-name responses
-                        exclude_words = ['yes', 'no', 'okay', 'sure', 'correct', 'right', 'wrong', 'maybe', 'please', 'thanks']
+                        exclude_words = ['yes', 'no', 'okay', 'sure', 'correct', 'right', 'wrong', 'maybe', 'please', 'thanks',
+                                       'still', 'waiting', 'hello', 'hi', 'hey', 'what', 'where', 'when', 'why', 'how',
+                                       'sorry', 'excuse', 'pardon', 'again', 'repeat', 'good', 'great', 'fine', 'well',
+                                       'um', 'uh', 'hmm', 'oh', 'ah', 'ok', 'alright', 'ready', 'done', 'finished']
                         if potential_name.lower() not in exclude_words:
                             user_data['user_name'] = potential_name
                             logging.info(f"Extracted name: {potential_name}")

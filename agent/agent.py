@@ -364,17 +364,19 @@ async def entrypoint(ctx: JobContext):
         logger.info("Creating AgentSession")
         session = AgentSession(
             # AssemblyAI Universal Streaming for STT
+            # Note: Many parameters shown in docs (word_boost, partial transcripts, etc.) 
+            # are not supported in the current LiveKit plugin version.
+            # Turn detection is configured via turn_detection="stt" below.
             stt=assemblyai.STT(
                 # API key will be read from ASSEMBLYAI_API_KEY env var if not provided
                 api_key=os.getenv("ASSEMBLYAI_API_KEY"),
                 # Sample rate for audio (16kHz is standard for telephony)
                 sample_rate=16000,
-                # Enable word-level confidence scores
-                word_boost=["tomorrow", "check", "in", "out", "property", "properties"],
-                # Disable automatic punctuation to improve real-time performance
-                punctuate=False,
-                # Disable automatic formatting for better control
-                format_text=False,
+                # Audio encoding format (pcm_s16le or pcm_mulaw)
+                encoding="pcm_s16le",
+                # Buffer size for audio frames (default 0.05 seconds)
+                # Smaller buffer = lower latency, larger buffer = better efficiency
+                buffer_size_seconds=0.05,
             ),
             # OpenAI for LLM - Using mini model for 2x faster responses
             llm=openai.LLM(
@@ -398,7 +400,16 @@ async def entrypoint(ctx: JobContext):
                 # Emotion control for more natural speech (experimental)
                 emotion=["positivity:high"],  # Friendly, positive tone
             ),
-            vad=silero.VAD.load(),  # Voice Activity Detection
+            vad=silero.VAD.load(
+                # Adjust min speech duration to prevent false positives
+                min_speech_duration=0.15,
+                # Adjust min silence duration to allow natural pauses
+                min_silence_duration=0.5,
+            ),  # Voice Activity Detection for interruption handling
+            # Use AssemblyAI's built-in turn detection model
+            # This uses both audio and linguistic information for better turn boundary detection
+            # The model can handle complex scenarios like pauses during credit card entry
+            turn_detection="stt",
         )
         logger.info("AgentSession created successfully")
         

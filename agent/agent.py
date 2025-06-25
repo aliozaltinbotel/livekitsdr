@@ -772,9 +772,5 @@ if __name__ == "__main__":
             api_key=os.getenv("LIVEKIT_API_KEY"),
             api_secret=os.getenv("LIVEKIT_API_SECRET"),
             ws_url=os.getenv("LIVEKIT_URL"),
-            # Accept all job requests
-            request_fnc=accept_job,
-            # Worker configuration
-            agent_name="voice-assistant",
         )
     )

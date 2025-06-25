@@ -1,9 +1,9 @@
-livekit-agents[mcp]>=0.8.0
-livekit-plugins-openai>=0.8.0
-livekit-plugins-azure>=0.3.0
-livekit-plugins-silero>=0.6.0
-livekit-plugins-assemblyai>=0.1.0
-livekit-plugins-cartesia>=1.1.0
+livekit-agents[mcp]>=1.1.4
+livekit-plugins-openai>=1.1.4
+livekit-plugins-azure>=1.1.4
+livekit-plugins-silero>=1.1.4
+livekit-plugins-assemblyai>=1.1.4
+livekit-plugins-cartesia>=1.1.4
 python-dotenv>=1.0.0
 supabase>=2.0.0
 pytz>=2024.1

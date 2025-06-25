@@ -6,6 +6,21 @@
 
 Many parameters shown in online documentation or examples may not be supported in the current SDK version.
 
+### 📦 SDK Versions (Updated: June 25, 2025)
+
+All LiveKit packages should be at version **1.1.4** or higher:
+- `livekit-agents[mcp]>=1.1.4`
+- `livekit-plugins-openai>=1.1.4`
+- `livekit-plugins-azure>=1.1.4`
+- `livekit-plugins-silero>=1.1.4`
+- `livekit-plugins-assemblyai>=1.1.4`
+- `livekit-plugins-cartesia>=1.1.4`
+
+To check for updates:
+```bash
+pip list --outdated | grep livekit
+```
+
 ### Verified Working Parameters (as of June 2025)
 
 #### AssemblyAI STT

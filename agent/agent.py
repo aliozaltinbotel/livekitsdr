@@ -369,14 +369,12 @@ async def entrypoint(ctx: JobContext):
                 api_key=os.getenv("ASSEMBLYAI_API_KEY"),
                 # Sample rate for audio (16kHz is standard for telephony)
                 sample_rate=16000,
-                # Enable formatted transcripts for better turn detection
-                format_turns=True,
-                # Confidence threshold for end of turn detection (0.7 is default)
-                end_of_turn_confidence_threshold=0.7,
-                # Minimum silence duration when confident about end of turn (160ms default)
-                min_end_of_turn_silence_when_confident=160,
-                # Increase end utterance silence threshold to prevent early cutoffs
-                end_utterance_silence_threshold=1.0,
+                # Enable word-level confidence scores
+                word_boost=["tomorrow", "check", "in", "out", "property", "properties"],
+                # Disable automatic punctuation to improve real-time performance
+                punctuate=False,
+                # Disable automatic formatting for better control
+                format_text=False,
             ),
             # OpenAI for LLM - Using mini model for 2x faster responses
             llm=openai.LLM(

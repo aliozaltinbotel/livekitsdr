@@ -318,23 +318,7 @@ HANDLING PROPERTY QUESTIONS:
 IMPORTANT: The get_customer_properties_context tool is your PRIMARY source of property information. Use it whenever you need property data."""
         )
 
-async def job_request_handler(request):
-    """Handle incoming job requests."""
-    logger.info(f"=== JOB REQUEST RECEIVED ===")
-    logger.info(f"Job ID: {request.job.id}")
-    logger.info(f"Room: {request.room}")
-    logger.info(f"Room name: {request.room.name}")
-    logger.info(f"Room metadata: {request.room.metadata}")
-    logger.info(f"Participant identity: {getattr(request, 'participant_identity', 'N/A')}")
-    
-    # Accept all jobs for voice assistant rooms
-    logger.info("Accepting job request...")
-    await request.accept(
-        name="Jamie AI Assistant",
-        identity=f"agent_{request.job.id}",
-        metadata='{"type": "voice_assistant", "version": "1.0", "agent": "jamie"}'
-    )
-    logger.info("Job request accepted")
+# Removed job_request_handler - use default auto-accept behavior
 
 async def entrypoint(ctx: JobContext):
     """Main entry point for the voice agent."""
@@ -772,16 +756,9 @@ async def entrypoint(ctx: JobContext):
 if __name__ == "__main__":
     logger.info("Starting LiveKit agent")
     logger.info(f"LiveKit URL: {os.getenv('LIVEKIT_URL')}")
+    logger.info(f"API Key: {os.getenv('LIVEKIT_API_KEY')[:10]}...")  # Show first 10 chars
+    logger.info(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
     
     # Run the agent with CLI - following official LiveKit examples pattern
-    worker_options = WorkerOptions(
-        entrypoint_fnc=entrypoint,
-        request_fnc=job_request_handler,  # Explicitly handle job requests
-    )
-    
-    # In production, log the worker ID for debugging
-    if IS_PRODUCTION:
-        logger.info("Starting agent in PRODUCTION mode")
-        logger.info(f"Worker will connect to: {os.getenv('LIVEKIT_URL')}")
-    
-    cli.run_app(worker_options)
+    # Using default auto-accept behavior for all jobs
+    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))

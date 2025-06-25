@@ -81,18 +81,30 @@ async def handle_messages(request: web.Request) -> web.Response:
     try:
         # Parse the message
         data = await request.json()
-        message = data.get("message", {})
+        # The message might be nested in a "message" field or be the data itself
+        if "message" in data:
+            message = data["message"]
+            # Handle nested message structure
+            if isinstance(message, dict) and "root" in message:
+                message = message["root"]
+        else:
+            message = data
+            
         method = message.get("method")
         params = message.get("params", {})
         request_id = message.get("id")
+        
+        logger.info(f"Received request: method={method}, id={request_id}")
         
         # Process the request
         result = None
         error = None
         
         if method == "initialize":
+            # Use the protocol version requested by the client
+            client_protocol = params.get("protocolVersion", "2025-03-26")
             result = {
-                "protocolVersion": "2024-11-05",
+                "protocolVersion": client_protocol,
                 "capabilities": {
                     "tools": {}
                 },
@@ -128,7 +140,7 @@ async def handle_messages(request: web.Request) -> web.Response:
         # Send response
         response = {
             "jsonrpc": "2.0",
-            "id": request_id
+            "id": request_id if request_id is not None else 0  # Default to 0 if id is missing
         }
         
         if error:
@@ -136,6 +148,7 @@ async def handle_messages(request: web.Request) -> web.Response:
         else:
             response["result"] = result
         
+        logger.info(f"Sending response: id={response['id']}, has_result={'result' in response}, has_error={'error' in response}")
         await message_queue.put(response)
         
         return web.Response(status=204)  # No content

@@ -10,6 +10,8 @@ from livekit import api
 
 # Load environment variables
 load_dotenv()
+# Also try loading from agent directory
+load_dotenv(os.path.join('agent', '.env'))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

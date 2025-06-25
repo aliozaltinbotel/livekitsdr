@@ -318,12 +318,28 @@ HANDLING PROPERTY QUESTIONS:
 IMPORTANT: The get_customer_properties_context tool is your PRIMARY source of property information. Use it whenever you need property data."""
         )
 
+async def job_request_handler(request):
+    """Handle incoming job requests."""
+    logger.info(f"=== JOB REQUEST RECEIVED ===")
+    logger.info(f"Job ID: {request.job.id}")
+    logger.info(f"Room: {request.room}")
+    logger.info(f"Participant identity: {request.participant_identity if hasattr(request, 'participant_identity') else 'N/A'}")
+    
+    # Accept all jobs for voice assistant rooms
+    logger.info("Accepting job request...")
+    await request.accept(
+        name="Jamie AI Assistant",
+        metadata='{"type": "voice_assistant", "version": "1.0"}'
+    )
+    logger.info("Job request accepted")
+
 async def entrypoint(ctx: JobContext):
     """Main entry point for the voice agent."""
     logger.info("=== ENTRYPOINT STARTED ===")
     logger.info(f"Job context: {ctx}")
     logger.info(f"Job ID: {ctx.job.id}")
     logger.info(f"Room: {ctx.room}")
+    logger.info(f"Room name: {ctx.room.name if ctx.room else 'No room'}")
     
     try:
         # Start Supabase session logging
@@ -755,4 +771,7 @@ if __name__ == "__main__":
     logger.info(f"LiveKit URL: {os.getenv('LIVEKIT_URL')}")
     
     # Run the agent with CLI - following official LiveKit examples pattern
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+    cli.run_app(WorkerOptions(
+        entrypoint_fnc=entrypoint,
+        request_fnc=job_request_handler,  # Explicitly handle job requests
+    ))

@@ -97,13 +97,21 @@ class Assistant(Agent):
             logger.warning("No MCP and no fallback tool available")
             
         logger.info(f"Initializing Agent with {len(tools)} tools and {len(mcp_servers)} MCP servers")
+        
+        # Get current date dynamically
+        today = datetime.now()
+        current_date_str = today.strftime("%B %d, %Y")  # e.g., "June 26, 2025"
+        current_year = today.year
+        
         super().__init__(
             tools=tools,
             mcp_servers=mcp_servers,
-            instructions="""====================================================================
+            instructions=f"""====================================================================
 IDENTITY & ROLE
 ====================================================================
 You are Skylar, a warm, helpful, and knowledgeable voice assistant managing guest inquiries and bookings for short-term rental properties.
+
+Current Context: Today's date is {current_date_str}. Always use current year ({current_year}) when parsing dates.
 
 ====================================================================
 SKILLS & CAPABILITIES
@@ -237,15 +245,26 @@ REQUIRED INFORMATION TO COLLECT FIRST:
 5. Whether pets are included (optional)
 
 DATE PARSING EXAMPLES:
-- "next weekend" → Calculate actual dates
-- "July 4th to 8th" → Convert to YYYY-MM-DD format
+- "next weekend" → Calculate actual dates using current year ({current_year})
+- "July 4th to 8th" → Convert to {current_year}-07-04 to {current_year}-07-08
 - "for 3 nights starting Friday" → Calculate check-out date
+- "in June" → Use current year {current_year} ({current_year}-06-XX)
+- Always assume current year ({current_year}) unless explicitly stated otherwise
+- For past dates in current year, assume next year instead
+
+HANDLING AMBIGUOUS DATES:
+- "June 28 to July 5" → {current_year}-06-28 to {current_year}-07-05
+- "28th to 5th" → Ask which months, then use {current_year}
+- "next month" → Calculate based on current date
+- "this summer" → Ask for specific dates
+- Never default to past years (e.g., {current_year-2}, {current_year-1})
 
 USING THE TOOL:
 1. First load property context if not already loaded
 2. Collect all required information from guest
-3. Call check_property_availability_and_pricing with parameters
-4. Share the results conversationally
+3. Verify dates are in the future before calling tool
+4. Call check_property_availability_and_pricing with parameters
+5. Share the results conversationally
 
 RESPONSE HANDLING:
 - If available: "Great news! The villa is available from [dates]. The total cost for [X] nights with [Y] guests would be [total], which includes [breakdown]."

@@ -6,6 +6,14 @@
 
 Many parameters shown in online documentation or examples may not be supported in the current SDK version.
 
+### 📅 Dynamic Date Handling
+
+The agent now uses dynamic dates in its instructions:
+- Automatically gets today's date using `datetime.now()`
+- Formats as "Month Day, Year" (e.g., "June 26, 2025")
+- All date parsing examples use the current year dynamically
+- This ensures the agent always knows the correct current date without manual updates
+
 ### 📦 SDK Versions (Updated: June 25, 2025)
 
 All LiveKit packages should be at version **1.1.4** or higher:

@@ -406,11 +406,8 @@ async def entrypoint(ctx: JobContext):
                 # ISO-639-1 language code
                 language="en",
                 # Speed: 0.0 is normal, range -1.0 to 1.0
-                # Slight speed increase (0.1) for more energetic delivery
-                speed=0.1,
-                # Emotion control (v1.1.4 feature)
-                # Options: positivity, curiosity, surprise, sadness, anger, intensity
-                emotion=["positivity:high", "curiosity:medium"],
+                # Keeping default speed for stability
+                speed=0.0,
                 # Sample rate (24kHz is Cartesia's native rate)
                 # encoding="pcm_s16le",  # Default, no need to specify
             ),

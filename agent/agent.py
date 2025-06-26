@@ -402,7 +402,7 @@ async def entrypoint(ctx: JobContext):
                 model="sonic-turbo",
                 # Professional female voice ID (clear and friendly)
                 # Alternative voices available in Cartesia dashboard
-                voice="248be419-c632-4f23-adf1-5324ed7dbf1d",
+                voice="86e30c1d-714b-4074-a1f2-1cb6b552fb49",
                 # ISO-639-1 language code
                 language="en",
                 # Speed: 0.0 is normal, range -1.0 to 1.0

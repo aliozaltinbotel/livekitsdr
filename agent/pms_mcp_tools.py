@@ -170,15 +170,15 @@ async def get_customer_properties_direct(
                 
                 # Format the response
                 context_parts = [
-                    f"# Customer Property Context\n",
+                    f"Customer Property Context\n",
                     f"Total Properties: {total_count}\n",
                     f"Active Properties: {len([p for p in properties if p.get('status', False)])}\n\n"
                 ]
                 
                 for idx, prop in enumerate(properties, 1):
-                    context_parts.append(f"## Property {idx}: {prop.get('name', 'Unknown')}\n")
-                    context_parts.append(f"- Status: {'Active' if prop.get('status', False) else 'Inactive'}\n")
-                    context_parts.append(f"- ID: {prop.get('id')}\n\n")
+                    context_parts.append(f"Property {idx}: {prop.get('name', 'Unknown')}\n")
+                    context_parts.append(f"Status: {'Active' if prop.get('status', False) else 'Inactive'}\n")
+                    context_parts.append(f"ID: {prop.get('id')}\n\n")
                 
                 return "".join(context_parts)
                 

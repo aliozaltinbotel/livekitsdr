@@ -97,7 +97,7 @@ class PMSTools:
             
             # Step 2: Build context information
             context_parts = [
-                f"# Customer Property Context\n",
+                f"Customer Property Context\n",
                 f"Total Properties: {total_count}\n",
                 f"Active Properties: {len([p for p in properties if p.get('status', False)])}\n\n"
             ]
@@ -108,9 +108,9 @@ class PMSTools:
                 property_name = property_summary.get("name", "Unknown")
                 property_status = "Active" if property_summary.get("status", False) else "Inactive"
                 
-                context_parts.append(f"## Property {idx}: {property_name}\n")
-                context_parts.append(f"- **Status**: {property_status}\n")
-                context_parts.append(f"- **ID**: {property_id}\n")
+                context_parts.append(f"Property {idx}: {property_name}\n")
+                context_parts.append(f"Status: {property_status}\n")
+                context_parts.append(f"ID: {property_id}\n")
                 
                 # Try to get more details for active properties
                 if property_id and property_status == "Active":
@@ -132,7 +132,7 @@ class PMSTools:
                             
                             if any([street, city, state]):
                                 full_address = ', '.join(filter(None, [address, street, city, state, zip_code, country]))
-                                context_parts.append(f"- **Location**: {full_address}\n")
+                                context_parts.append(f"Location: {full_address}\n")
                             
                             # Capacity and Accommodation info
                             max_occupancy = property_detail.get("maxOccupancy")
@@ -142,20 +142,20 @@ class PMSTools:
                             beds = property_detail.get("beds")
                             
                             if max_occupancy:
-                                context_parts.append(f"- **Max Occupancy**: {max_occupancy} guests\n")
+                                context_parts.append(f"Max Occupancy: {max_occupancy} guests\n")
                             if max_adults:
-                                context_parts.append(f"- **Max Adults**: {max_adults}\n")
+                                context_parts.append(f"Max Adults: {max_adults}\n")
                             if bedrooms:
-                                context_parts.append(f"- **Bedrooms**: {bedrooms}\n")
+                                context_parts.append(f"Bedrooms: {bedrooms}\n")
                             if bathrooms:
-                                context_parts.append(f"- **Bathrooms**: {bathrooms}\n")
+                                context_parts.append(f"Bathrooms: {bathrooms}\n")
                             if beds:
-                                context_parts.append(f"- **Beds**: {beds}\n")
+                                context_parts.append(f"Beds: {beds}\n")
                             
                             # Property type and details
                             property_type = property_detail.get("typeCode")
                             if property_type:
-                                context_parts.append(f"- **Type**: {property_type}\n")
+                                context_parts.append(f"Type: {property_type}\n")
                             
                             # Check-in/Check-out times
                             check_in_from = property_detail.get("checkInFrom")
@@ -165,10 +165,10 @@ class PMSTools:
                             
                             if check_in_from or check_in_until:
                                 check_in_time = f"{check_in_from}" + (f"-{check_in_until}" if check_in_until != check_in_from else "")
-                                context_parts.append(f"- **Check-in Time**: {check_in_time}\n")
+                                context_parts.append(f"Check-in Time: {check_in_time}\n")
                             if check_out_from or check_out_until:
                                 check_out_time = f"{check_out_from}" + (f"-{check_out_until}" if check_out_until != check_out_from else "")
-                                context_parts.append(f"- **Check-out Time**: {check_out_time}\n")
+                                context_parts.append(f"Check-out Time: {check_out_time}\n")
                             
                             # WiFi and Access Codes
                             wifi_network = property_detail.get("wifiNetwork")
@@ -177,18 +177,18 @@ class PMSTools:
                             lock_code = property_detail.get("lockCode")
                             
                             if wifi_network:
-                                context_parts.append(f"- **WiFi Network**: {wifi_network}\n")
+                                context_parts.append(f"WiFi Network: {wifi_network}\n")
                             if wifi_password:
-                                context_parts.append(f"- **WiFi Password**: {wifi_password}\n")
+                                context_parts.append(f"WiFi Password: {wifi_password}\n")
                             if door_code:
-                                context_parts.append(f"- **Door Code**: {door_code}\n")
+                                context_parts.append(f"Door Code: {door_code}\n")
                             if lock_code:
-                                context_parts.append(f"- **Lock Code**: {lock_code}\n")
+                                context_parts.append(f"Lock Code: {lock_code}\n")
                             
                             # Property Manager
                             property_manager = property_detail.get("propertyManager")
                             if property_manager:
-                                context_parts.append(f"- **Property Manager**: {property_manager}\n")
+                                context_parts.append(f"Property Manager: {property_manager}\n")
                             
                             # Pricing Settings
                             pricing_settings = property_detail.get("pricingSettings")
@@ -201,15 +201,15 @@ class PMSTools:
                                 extra_person_fee = pricing_settings.get("extraPersonFee")
                                 
                                 if base_price and currency:
-                                    context_parts.append(f"- **Base Price**: {currency} {base_price}/night\n")
+                                    context_parts.append(f"Base Price: {currency} {base_price}/night\n")
                                 if cleaning_fee:
-                                    context_parts.append(f"- **Cleaning Fee**: {currency} {cleaning_fee}\n")
+                                    context_parts.append(f"Cleaning Fee: {currency} {cleaning_fee}\n")
                                 if security_deposit:
-                                    context_parts.append(f"- **Security Deposit**: {currency} {security_deposit}\n")
+                                    context_parts.append(f"Security Deposit: {currency} {security_deposit}\n")
                                 if pet_fee:
-                                    context_parts.append(f"- **Pet Fee**: {currency} {pet_fee}\n")
+                                    context_parts.append(f"Pet Fee: {currency} {pet_fee}\n")
                                 if extra_person_fee:
-                                    context_parts.append(f"- **Extra Person Fee**: {currency} {extra_person_fee}\n")
+                                    context_parts.append(f"Extra Person Fee: {currency} {extra_person_fee}\n")
                             
                             # Amenities
                             amenities = property_detail.get("amenities", [])
@@ -222,25 +222,25 @@ class PMSTools:
                                             amenity_names.append(amenity_name)
                                 
                                 if amenity_names:
-                                    context_parts.append(f"- **Amenities**: {', '.join(amenity_names)}\n")
+                                    context_parts.append(f"Amenities: {', '.join(amenity_names)}\n")
                                     if len(amenities) > 20:
                                         context_parts.append(f"  (and {len(amenities) - 20} more amenities)\n")
                             
                             # License info
                             license_code = property_detail.get("licenseCode")
                             if license_code:
-                                context_parts.append(f"- **License**: {license_code}\n")
+                                context_parts.append(f"License: {license_code}\n")
                             
                             # Coordinates
                             lat = property_detail.get("latitude")
                             lon = property_detail.get("longitude")
                             if lat and lon:
-                                context_parts.append(f"- **Coordinates**: {lat}, {lon}\n")
+                                context_parts.append(f"Coordinates: {lat}, {lon}\n")
                             
                             # Time Zone
                             time_zone = property_detail.get("timeZone")
                             if time_zone:
-                                context_parts.append(f"- **Time Zone**: {time_zone}\n")
+                                context_parts.append(f"Time Zone: {time_zone}\n")
                             
                             # Description (now showing full description for voice agent context)
                             descriptions = property_detail.get("descriptions", [])
@@ -250,13 +250,13 @@ class PMSTools:
                                         description_text = desc["text"]
                                         # Show first 500 chars of description
                                         desc_preview = description_text[:500] + "..." if len(description_text) > 500 else description_text
-                                        context_parts.append(f"- **Description**: {desc_preview}\n")
+                                        context_parts.append(f"Description: {desc_preview}\n")
                                         break
                             
                             # Images count
                             images = property_detail.get("images", [])
                             if images:
-                                context_parts.append(f"- **Images Available**: {len(images)} photos\n")
+                                context_parts.append(f"Images Available: {len(images)} photos\n")
                                 
                     except Exception as e:
                         logger.warning(f"Could not fetch details for property {property_id}: {e}")
@@ -264,7 +264,7 @@ class PMSTools:
                 context_parts.append("\n")
             
             # Step 4: Add summary statistics
-            context_parts.append("## Summary\n")
+            context_parts.append("Summary\n")
             context_parts.append(f"This customer has {total_count} properties in the system.\n")
             
             active_count = len([p for p in properties if p.get('status', False)])
@@ -342,14 +342,14 @@ class PMSTools:
             if not property_status:
                 return [TextContent(
                     type="text",
-                    text=f"# Availability Check\\n\\n**Property**: {property_name}\\n**Status**: This property is currently inactive and not available for bookings."
+                    text=f"Availability Check\n\nProperty: {property_name}\nStatus: This property is currently inactive and not available for bookings."
                 )]
             
             # Check guest count
             if guest_count > max_occupancy:
                 return [TextContent(
                     type="text",
-                    text=f"# Availability Check\\n\\n**Property**: {property_name}\\n**Error**: This property has a maximum occupancy of {max_occupancy} guests. You requested {guest_count} guests."
+                    text=f"Availability Check\n\nProperty: {property_name}\nError: This property has a maximum occupancy of {max_occupancy} guests. You requested {guest_count} guests."
                 )]
             
             # Step 2: Check for existing reservations (basic availability)
@@ -412,44 +412,44 @@ class PMSTools:
             
             # Build response
             response_parts = [
-                f"# Availability & Pricing Check\\n",
-                f"\\n**Property**: {property_name}\\n",
-                f"**Dates**: {check_in_date} to {check_out_date} ({nights} nights)\\n",
-                f"**Guests**: {guest_count}\\n"
+                f"Availability and Pricing Check\n",
+                f"\nProperty: {property_name}\n",
+                f"Dates: {check_in_date} to {check_out_date} ({nights} nights)\n",
+                f"Guests: {guest_count}\n"
             ]
             
             if include_pets:
-                response_parts.append("**Pets**: Yes\\n")
+                response_parts.append("Pets: Yes\n")
             
-            response_parts.append("\\n## Availability\\n")
+            response_parts.append("\nAvailability\n")
             
             if is_available:
-                response_parts.append("✅ **Available** - These dates are available for booking.\\n")
+                response_parts.append("Available - These dates are available for booking.\n")
             else:
-                response_parts.append("❌ **Not Available** - These dates conflict with existing bookings:\\n")
+                response_parts.append("Not Available - These dates conflict with existing bookings:\n")
                 for conflict in conflicting_dates:
-                    response_parts.append(f"   - {conflict}\\n")
+                    response_parts.append(f"   {conflict}\n")
             
-            response_parts.append("\\n## Pricing Breakdown\\n")
-            response_parts.append(f"- **Accommodation**: {currency} {accommodation_total:,.2f} ({currency} {base_price}/night × {nights} nights)\\n")
+            response_parts.append("\nPricing Breakdown\n")
+            response_parts.append(f"Accommodation: {currency} {accommodation_total:,.2f} ({currency} {base_price}/night × {nights} nights)\n")
             
             if extra_person_total > 0:
-                response_parts.append(f"- **Extra Person Fee**: {currency} {extra_person_total:,.2f} ({extra_persons} extra persons × {currency} {extra_person_fee}/night × {nights} nights)\\n")
+                response_parts.append(f"Extra Person Fee: {currency} {extra_person_total:,.2f} ({extra_persons} extra persons × {currency} {extra_person_fee}/night × {nights} nights)\n")
             
             if cleaning_fee > 0:
-                response_parts.append(f"- **Cleaning Fee**: {currency} {cleaning_fee:,.2f}\\n")
+                response_parts.append(f"Cleaning Fee: {currency} {cleaning_fee:,.2f}\n")
             
             if pet_fee > 0:
-                response_parts.append(f"- **Pet Fee**: {currency} {pet_fee:,.2f}\\n")
+                response_parts.append(f"Pet Fee: {currency} {pet_fee:,.2f}\n")
             
-            response_parts.append(f"\\n**Total**: {currency} {total_cost:,.2f}\\n")
+            response_parts.append(f"\nTotal: {currency} {total_cost:,.2f}\n")
             
             if security_deposit and security_deposit > 0:
-                response_parts.append(f"\\n*Note: A security deposit of {currency} {security_deposit:,.2f} may be required.*\\n")
+                response_parts.append(f"\nNote: A security deposit of {currency} {security_deposit:,.2f} may be required.\n")
             
             # Add booking instructions if available
             if is_available:
-                response_parts.append("\\n## Next Steps\\n")
+                response_parts.append("\nNext Steps\n")
                 response_parts.append("This property is available for your requested dates. ")
                 response_parts.append("To proceed with the booking, please confirm your details and we can help you complete the reservation.\\n")
             

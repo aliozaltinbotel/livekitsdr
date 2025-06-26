@@ -28,6 +28,11 @@ class PMSAPIClient:
     async def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         response = await self.client.get(endpoint, params=params)
         response.raise_for_status()
+        
+        # Handle 204 No Content responses
+        if response.status_code == 204:
+            return {}
+            
         return response.json()
     
     async def post(self, endpoint: str, data: Optional[Dict[str, Any]] = None, files: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

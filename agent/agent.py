@@ -285,7 +285,22 @@ async def entrypoint(ctx: JobContext):
         logger.info("Assistant created successfully")
         
         # Configure the voice session with optimized parameters for v1.1.4
-        logger.info("Creating AgentSession with optimized v1.1.4 parameters")
+        logger.info("Creating AgentSession with optimized v1.1.4 parameters")  
+        
+        # Create TTS instance with error handling
+        try:
+            tts_instance = cartesia.TTS(
+                api_key=os.getenv("CARTESIA_API_KEY"),
+                model="sonic-turbo",
+                voice="86e30c1d-714b-4074-a1f2-1cb6b552fb49",
+                language="en",
+                speed=0.0,
+            )
+            logger.info("Cartesia TTS instance created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create Cartesia TTS instance: {e}")
+            raise
+        
         session = AgentSession(
             # AssemblyAI Universal Streaming for STT
             # Optimized for conversational AI with v1.1.4
@@ -315,26 +330,12 @@ async def entrypoint(ctx: JobContext):
                 # Temperature 0.7 provides good balance between creativity and consistency
                 # Valid range for voice agents: 0.6-1.2
                 temperature=0.7,
+                # Disable base URL checking to avoid 404 errors
+                base_url="https://api.openai.com/v1",
                 # Note: v1.1.4 supports streaming by default
             ),
-            # Cartesia TTS with Sonic Turbo - Industry-leading latency
-            tts=cartesia.TTS(
-                # API key will be read from CARTESIA_API_KEY env var if not provided
-                api_key=os.getenv("CARTESIA_API_KEY"),
-                # Sonic-turbo: 40ms latency (fastest available)
-                # Alternative: "sonic-2" for standard quality
-                model="sonic-turbo",
-                # Professional female voice ID (clear and friendly)
-                # Alternative voices available in Cartesia dashboard
-                voice="86e30c1d-714b-4074-a1f2-1cb6b552fb49",
-                # ISO-639-1 language code
-                language="en",
-                # Speed: 0.0 is normal, range -1.0 to 1.0
-                # Keeping default speed for stability
-                speed=0.0,
-                # Sample rate (24kHz is Cartesia's native rate)
-                # encoding="pcm_s16le",  # Default, no need to specify
-            ),
+            # Use the pre-created TTS instance to avoid stream issues
+            tts=tts_instance,
             # Silero VAD - Optimized for conversation flow
             vad=silero.VAD.load(
                 # Minimum speech duration to start detection (150ms optimal)

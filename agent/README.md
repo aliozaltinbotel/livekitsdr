@@ -259,6 +259,17 @@ az container show --resource-group livekitsdr-rg \
 - [ ] Implement lead scoring based on patterns
 - [ ] Add multi-language support
 - [ ] Enhanced calendar integration features
+- [ ] LangChain integration for advanced agent capabilities
+
+## LangChain Integration
+
+This agent can be integrated with existing LangChain applications. Example files are provided:
+- `botelllm_voice_agent.py` - LiveKit agent that connects to LangChain backend
+- `botelllm/src/routes/voice_route.py` - FastAPI endpoints for voice sessions
+- `botelllm/src/services/voice_integration_service.py` - Voice adaptation service
+- `frontend/components/VoiceChat.tsx` - React component for web integration
+
+This allows you to add voice capabilities to existing LangChain applications while maintaining all business logic in one place.
 
 ## Support
 

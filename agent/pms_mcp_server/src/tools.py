@@ -1,6 +1,6 @@
 from typing import Dict, Any, List
 from mcp.types import Tool, TextContent
-from .api_client import PMSAPIClient
+from api_client import PMSAPIClient
 import json
 import logging
 
@@ -82,7 +82,7 @@ class PMSTools:
             # Step 1: Get all properties for the customer using the GetAll endpoint
             # The customerId is already in the headers, so the API should filter automatically
             properties_response = await self.api_client.get("/api/Property/GetAll", params={
-                "PageSize": 100,  # Get up to 100 properties
+                "PageSize": 1000,  # Get ALL properties (increased from 100)
                 "Status": None if include_inactive else True  # True = active only, None = all
             })
             
@@ -98,8 +98,10 @@ class PMSTools:
             # Step 2: Build context information
             context_parts = [
                 f"Customer Property Context\n",
+                f"{'=' * 50}\n",
                 f"Total Properties: {total_count}\n",
-                f"Active Properties: {len([p for p in properties if p.get('status', False)])}\n\n"
+                f"Active Properties: {len([p for p in properties if p.get('status', False)])}\n",
+                f"Inactive Properties: {len([p for p in properties if not p.get('status', False)])}\n\n"
             ]
             
             # Step 3: Get detailed information for each property
@@ -108,9 +110,15 @@ class PMSTools:
                 property_name = property_summary.get("name", "Unknown")
                 property_status = "Active" if property_summary.get("status", False) else "Inactive"
                 
-                context_parts.append(f"Property {idx}: {property_name}\n")
+                context_parts.append(f"\nProperty {idx}: {property_name}\n")
+                context_parts.append(f"{'-' * 40}\n")
                 context_parts.append(f"Status: {property_status}\n")
                 context_parts.append(f"ID: {property_id}\n")
+                
+                # Add internal name if different from display name
+                internal_name = property_summary.get("internalName")
+                if internal_name and internal_name != property_name:
+                    context_parts.append(f"Internal Name: {internal_name}\n")
                 
                 # Try to get more details for active properties
                 if property_id and property_status == "Active":
@@ -129,9 +137,17 @@ class PMSTools:
                             country = property_detail.get("countryCode", "")
                             address = property_detail.get("address", "")
                             zip_code = property_detail.get("zipCode", "")
+                            region = property_detail.get("region", "")
+                            apt = property_detail.get("apt", "")
                             
-                            if any([street, city, state]):
-                                full_address = ', '.join(filter(None, [address, street, city, state, zip_code, country]))
+                            if any([street, city, state, address]):
+                                location_parts = []
+                                if apt:
+                                    location_parts.append(f"Apt {apt}")
+                                location_parts.extend(filter(None, [address, street, city, state, zip_code, country]))
+                                if region:
+                                    location_parts.append(f"Region: {region}")
+                                full_address = ', '.join(location_parts)
                                 context_parts.append(f"Location: {full_address}\n")
                             
                             # Capacity and Accommodation info
@@ -156,6 +172,27 @@ class PMSTools:
                             property_type = property_detail.get("typeCode")
                             if property_type:
                                 context_parts.append(f"Type: {property_type}\n")
+                            
+                            # Additional property details
+                            classification = property_detail.get("classification")
+                            if classification:
+                                context_parts.append(f"Classification: {classification}\n")
+                            
+                            area_sqft = property_detail.get("areaSquareFeet")
+                            if area_sqft:
+                                context_parts.append(f"Area: {area_sqft} sq ft\n")
+                            
+                            min_occupancy = property_detail.get("minOccupancy")
+                            if min_occupancy:
+                                context_parts.append(f"Min Occupancy: {min_occupancy} guests\n")
+                            
+                            max_pets = property_detail.get("maxPets")
+                            if max_pets is not None:
+                                context_parts.append(f"Max Pets: {max_pets}\n")
+                            
+                            num_units = property_detail.get("numberOfUnits")
+                            if num_units:
+                                context_parts.append(f"Number of Units: {num_units}\n")
                             
                             # Check-in/Check-out times
                             check_in_from = property_detail.get("checkInFrom")
@@ -193,15 +230,25 @@ class PMSTools:
                             # Pricing Settings
                             pricing_settings = property_detail.get("pricingSettings")
                             if pricing_settings:
+                                currency = pricing_settings.get("currency", "EUR")
                                 base_price = pricing_settings.get("basePrice")
-                                currency = pricing_settings.get("currency")
+                                weekend_base_price = pricing_settings.get("weekendBasePrice")
                                 cleaning_fee = pricing_settings.get("cleaningFee")
                                 security_deposit = pricing_settings.get("securityDepositFee")
                                 pet_fee = pricing_settings.get("petFee")
                                 extra_person_fee = pricing_settings.get("extraPersonFee")
+                                monthly_factor = pricing_settings.get("monthlyPriceFactor")
+                                weekly_factor = pricing_settings.get("weeklyPriceFactor")
+                                guests_included = pricing_settings.get("guestsIncludedInRegularFee")
+                                weekend_days = pricing_settings.get("weekendDays")
                                 
-                                if base_price and currency:
+                                context_parts.append(f"\n--- Pricing Information ---\n")
+                                if base_price is not None:
                                     context_parts.append(f"Base Price: {currency} {base_price}/night\n")
+                                if weekend_base_price and weekend_base_price > 0:
+                                    context_parts.append(f"Weekend Price: {currency} {weekend_base_price}/night\n")
+                                if weekend_days:
+                                    context_parts.append(f"Weekend Days: {weekend_days}\n")
                                 if cleaning_fee:
                                     context_parts.append(f"Cleaning Fee: {currency} {cleaning_fee}\n")
                                 if security_deposit:
@@ -210,26 +257,101 @@ class PMSTools:
                                     context_parts.append(f"Pet Fee: {currency} {pet_fee}\n")
                                 if extra_person_fee:
                                     context_parts.append(f"Extra Person Fee: {currency} {extra_person_fee}\n")
+                                if guests_included is not None:
+                                    context_parts.append(f"Guests Included in Base Price: {guests_included}\n")
+                                if monthly_factor and monthly_factor != 1.0:
+                                    context_parts.append(f"Monthly Discount: {(1 - monthly_factor) * 100:.0f}%\n")
+                                if weekly_factor and weekly_factor != 1.0:
+                                    context_parts.append(f"Weekly Discount: {(1 - weekly_factor) * 100:.0f}%\n")
                             
-                            # Amenities
+                            # Additional Fees and Taxes
+                            fees = property_detail.get("fees", [])
+                            if fees:
+                                context_parts.append(f"\nAdditional Fees:\n")
+                                for fee in fees:
+                                    fee_name = fee.get("name", "Unknown Fee")
+                                    fee_amount = fee.get("amount", 0)
+                                    fee_type = fee.get("type", "")
+                                    context_parts.append(f"  - {fee_name}: {currency} {fee_amount} ({fee_type})\n")
+                            
+                            taxes = property_detail.get("taxes", [])
+                            if taxes:
+                                context_parts.append(f"\nTaxes:\n")
+                                for tax in taxes:
+                                    tax_name = tax.get("name", "Unknown Tax")
+                                    tax_rate = tax.get("rate", 0)
+                                    context_parts.append(f"  - {tax_name}: {tax_rate}%\n")
+                            
+                            # Amenities with full details
                             amenities = property_detail.get("amenities", [])
                             if amenities:
-                                amenity_names = []
-                                for amenity in amenities[:20]:  # Limit to first 20 amenities
-                                    if isinstance(amenity, dict):
-                                        amenity_name = amenity.get("attributes") or amenity.get("typeCode", "")
-                                        if amenity_name:
-                                            amenity_names.append(amenity_name)
+                                context_parts.append(f"\nAmenities ({len(amenities)} total):\n")
                                 
-                                if amenity_names:
-                                    context_parts.append(f"Amenities: {', '.join(amenity_names)}\n")
-                                    if len(amenities) > 20:
-                                        context_parts.append(f"  (and {len(amenities) - 20} more amenities)\n")
+                                # Group amenities by category
+                                amenity_categories = {}
+                                for amenity in amenities:
+                                    if isinstance(amenity, dict) and not amenity.get("isDeleted", False):
+                                        type_code = amenity.get("typeCode", "OTHER")
+                                        attributes = amenity.get("attributes", "")
+                                        instruction = amenity.get("instruction", "")
+                                        is_present = amenity.get("isPresent")
+                                        
+                                        # Determine category based on type code
+                                        if "KITCHEN" in type_code or "REFRIGERATOR" in type_code or "OVEN" in type_code or "MICROWAVE" in type_code:
+                                            category = "Kitchen"
+                                        elif "BATHROOM" in type_code or "TUB" in type_code or "SHOWER" in type_code or "BIDET" in type_code:
+                                            category = "Bathroom"
+                                        elif "BEDROOM" in type_code or "BED" in type_code or "LINENS" in type_code:
+                                            category = "Bedroom"
+                                        elif "SAFETY" in type_code or "DETECTOR" in type_code or "EXTINGUISHER" in type_code or "FIRST_AID" in type_code:
+                                            category = "Safety"
+                                        elif "CHILD" in type_code or "BABY" in type_code or "INFANT" in type_code:
+                                            category = "Family"
+                                        elif "PARKING" in type_code or "GARAGE" in type_code:
+                                            category = "Parking"
+                                        elif "POOL" in type_code or "BEACH" in type_code or "WATERFRONT" in type_code:
+                                            category = "Water Features"
+                                        elif "INTERNET" in type_code or "WIFI" in type_code or "WIRELESS" in type_code:
+                                            category = "Internet"
+                                        elif "TV" in type_code or "CABLE" in type_code or "SOUND" in type_code or "VIDEO" in type_code:
+                                            category = "Entertainment"
+                                        elif "AIR_CONDITIONING" in type_code or "HEATING" in type_code or "FAN" in type_code:
+                                            category = "Climate Control"
+                                        elif "OUTDOOR" in type_code or "GARDEN" in type_code or "BALCONY" in type_code or "PATIO" in type_code:
+                                            category = "Outdoor"
+                                        else:
+                                            category = "Other"
+                                        
+                                        if category not in amenity_categories:
+                                            amenity_categories[category] = []
+                                        
+                                        amenity_info = attributes
+                                        if instruction:
+                                            amenity_info += f" (Note: {instruction})"
+                                        if is_present is False:
+                                            amenity_info += " [NOT PRESENT]"
+                                        
+                                        amenity_categories[category].append(amenity_info)
+                                
+                                # Display amenities by category
+                                for category in sorted(amenity_categories.keys()):
+                                    context_parts.append(f"  {category} ({len(amenity_categories[category])} items):\n")
+                                    for amenity in amenity_categories[category]:  # Show ALL amenities
+                                        context_parts.append(f"    - {amenity}\n")
                             
                             # License info
                             license_code = property_detail.get("licenseCode")
+                            license_date = property_detail.get("licenseDate")
                             if license_code:
-                                context_parts.append(f"License: {license_code}\n")
+                                context_parts.append(f"License: {license_code}")
+                                if license_date:
+                                    context_parts.append(f" (Date: {license_date})")
+                                context_parts.append("\n")
+                            
+                            # Currency info
+                            base_currency = property_detail.get("baseCurrency")
+                            if base_currency:
+                                context_parts.append(f"Base Currency: {base_currency}\n")
                             
                             # Coordinates
                             lat = property_detail.get("latitude")
@@ -242,38 +364,216 @@ class PMSTools:
                             if time_zone:
                                 context_parts.append(f"Time Zone: {time_zone}\n")
                             
-                            # Description (now showing full description for voice agent context)
+                            # Description (showing FULL descriptions for voice agent context)
                             descriptions = property_detail.get("descriptions", [])
                             if descriptions:
-                                for desc in descriptions:
+                                context_parts.append(f"\nDescriptions ({len(descriptions)} total):\n")
+                                for desc_idx, desc in enumerate(descriptions, 1):
                                     if isinstance(desc, dict) and desc.get("text"):
                                         description_text = desc["text"]
-                                        # Show first 500 chars of description
-                                        desc_preview = description_text[:500] + "..." if len(description_text) > 500 else description_text
-                                        context_parts.append(f"Description: {desc_preview}\n")
-                                        break
+                                        desc_type = desc.get("typeCode", "Unknown")
+                                        desc_lang = desc.get("language", "Default")
+                                        context_parts.append(f"  Description {desc_idx} (Type: {desc_type}, Language: {desc_lang}):\n")
+                                        context_parts.append(f"  {description_text}\n\n")
                             
-                            # Images count
+                            # Images count only (details removed per user request)
                             images = property_detail.get("images", [])
                             if images:
-                                context_parts.append(f"Images Available: {len(images)} photos\n")
+                                context_parts.append(f"\nTotal Images Available: {len(images)}\n")
+                            
+                            # Integrations (OTA connections)
+                            integrations = property_detail.get("integrations", [])
+                            if integrations:
+                                context_parts.append(f"\nOTA Integrations:\n")
+                                for integration in integrations:
+                                    source = integration.get("source", "Unknown")
+                                    ota_id = integration.get("otaId", "")
+                                    ota_url = integration.get("otaUrl", "")
+                                    if ota_id:
+                                        context_parts.append(f"  - {source.title()}: ID {ota_id}\n")
+                                    if ota_url:
+                                        context_parts.append(f"    URL: {ota_url}\n")
+                            
+                            # Knowledge Base Status
+                            knowledge_percentage = property_detail.get("knowledgePercentage")
+                            knowledge_conflict = property_detail.get("knowledgeConflict")
+                            knowledge_last_sync = property_detail.get("knowledgeLastSync")
+                            conversation_rag = property_detail.get("conversationRagStatus")
+                            document_rag = property_detail.get("documentRagStatus")
+                            kb_rag_status = property_detail.get("knowledgeBaseRagStatus")
+                            
+                            if any([knowledge_percentage is not None, knowledge_conflict is not None, knowledge_last_sync]):
+                                context_parts.append(f"\nKnowledge Base Status:\n")
+                                if knowledge_percentage is not None:
+                                    context_parts.append(f"  Completion: {knowledge_percentage}%\n")
+                                if knowledge_conflict is not None:
+                                    context_parts.append(f"  Conflicts: {knowledge_conflict}\n")
+                                if knowledge_last_sync:
+                                    context_parts.append(f"  Last Sync: {knowledge_last_sync}\n")
+                                if conversation_rag is not None:
+                                    context_parts.append(f"  Conversation RAG Status: {conversation_rag}\n")
+                                if document_rag is not None:
+                                    context_parts.append(f"  Document RAG Status: {document_rag}\n")
+                                if kb_rag_status is not None:
+                                    context_parts.append(f"  KB RAG Status: {'Active' if kb_rag_status else 'Inactive'}\n")
+                            
+                            # Channel and Listing Information
+                            channel_code = property_detail.get("channelCode")
+                            listing_id = property_detail.get("listingId")
+                            customer_channel_id = property_detail.get("customerChannelId")
+                            is_channel = property_detail.get("isChannel")
+                            
+                            if any([channel_code, listing_id, customer_channel_id, is_channel is not None]):
+                                context_parts.append(f"\nChannel Information:\n")
+                                if channel_code:
+                                    context_parts.append(f"  Channel Code: {channel_code}\n")
+                                if listing_id:
+                                    context_parts.append(f"  Listing ID: {listing_id}\n")
+                                if customer_channel_id:
+                                    context_parts.append(f"  Customer Channel ID: {customer_channel_id}\n")
+                                if is_channel is not None:
+                                    context_parts.append(f"  Is Channel: {'Yes' if is_channel else 'No'}\n")
+                            
+                            # Booking Settings
+                            booking_settings = property_detail.get("bookingSettings")
+                            if booking_settings:
+                                context_parts.append(f"\nBooking Settings:\n")
+                                for key, value in booking_settings.items():
+                                    if value is not None:
+                                        context_parts.append(f"  {key}: {value}\n")
+                            
+                            # Nearest Places
+                            nearest_places = property_detail.get("nearestPlaces")
+                            if nearest_places:
+                                context_parts.append(f"\nNearby Attractions:\n")
+                                for place in nearest_places:
+                                    place_name = place.get("name", "Unknown")
+                                    distance = place.get("distance", "")
+                                    context_parts.append(f"  - {place_name}: {distance}\n")
+                            
+                            # Custom Fields
+                            custom_fields = property_detail.get("customFields", [])
+                            if custom_fields:
+                                context_parts.append(f"\nCustom Fields:\n")
+                                for field in custom_fields:
+                                    field_name = field.get("name", "Unknown Field")
+                                    field_value = field.get("value", "")
+                                    context_parts.append(f"  {field_name}: {field_value}\n")
+                            
+                            # Tags
+                            tags = property_detail.get("tags", [])
+                            if tags:
+                                tag_names = [tag.get("name", "") for tag in tags if tag.get("name")]
+                                if tag_names:
+                                    context_parts.append(f"\nTags: {', '.join(tag_names)}\n")
+                            
+                            # Files
+                            files = property_detail.get("files", [])
+                            if files:
+                                context_parts.append(f"\nAdditional Files ({len(files)} total):\n")
+                                for file in files:
+                                    file_name = file.get("name", "Unknown")
+                                    file_type = file.get("type", "")
+                                    file_url = file.get("url", "")
+                                    file_size = file.get("size", "")
+                                    context_parts.append(f"  - {file_name}")
+                                    if file_type:
+                                        context_parts.append(f" (Type: {file_type})")
+                                    if file_size:
+                                        context_parts.append(f" [Size: {file_size}]")
+                                    context_parts.append("\n")
+                                    if file_url:
+                                        context_parts.append(f"    URL: {file_url}\n")
+                            
+                            # Sub-rooms
+                            sub_rooms = property_detail.get("subRooms", [])
+                            if sub_rooms:
+                                context_parts.append(f"\nSub-rooms/Units ({len(sub_rooms)} total):\n")
+                                for room in sub_rooms:  # Show ALL sub-rooms
+                                    room_name = room.get("name", "Unnamed Room")
+                                    room_type = room.get("type", "")
+                                    room_id = room.get("id", "")
+                                    room_desc = room.get("description", "")
+                                    context_parts.append(f"  - {room_name}")
+                                    if room_type:
+                                        context_parts.append(f" (Type: {room_type})")
+                                    if room_id:
+                                        context_parts.append(f" [ID: {room_id}]")
+                                    context_parts.append("\n")
+                                    if room_desc:
+                                        context_parts.append(f"    Description: {room_desc}\n")
                                 
                     except Exception as e:
                         logger.warning(f"Could not fetch details for property {property_id}: {e}")
                 
                 context_parts.append("\n")
             
-            # Step 4: Add summary statistics
-            context_parts.append("Summary\n")
-            context_parts.append(f"This customer has {total_count} properties in the system.\n")
+            # Step 4: Add comprehensive summary statistics
+            context_parts.append("\n" + "=" * 50 + "\n")
+            context_parts.append("SUMMARY & STATISTICS\n")
+            context_parts.append("=" * 50 + "\n")
+            
+            context_parts.append(f"Total Properties: {total_count}\n")
             
             active_count = len([p for p in properties if p.get('status', False)])
-            if active_count > 0:
-                context_parts.append(f"{active_count} properties are currently active and available for bookings.\n")
-            
             inactive_count = total_count - active_count
-            if inactive_count > 0:
-                context_parts.append(f"{inactive_count} properties are inactive.\n")
+            context_parts.append(f"Status Breakdown:\n")
+            context_parts.append(f"  - Active: {active_count} properties\n")
+            context_parts.append(f"  - Inactive: {inactive_count} properties\n")
+            
+            # Property types summary
+            property_types = {}
+            for prop in properties:
+                prop_type = prop.get('typeCode', 'Unknown')
+                property_types[prop_type] = property_types.get(prop_type, 0) + 1
+            
+            if property_types:
+                context_parts.append(f"\nProperty Types:\n")
+                for ptype, count in property_types.items():
+                    context_parts.append(f"  - {ptype}: {count}\n")
+            
+            # Location summary
+            cities = {}
+            for prop in properties:
+                city = prop.get('city', 'Unknown')
+                if city:
+                    cities[city] = cities.get(city, 0) + 1
+            
+            if cities:
+                context_parts.append(f"\nLocations:\n")
+                for city, count in cities.items():
+                    context_parts.append(f"  - {city}: {count} properties\n")
+            
+            # Capacity summary
+            total_max_occupancy = sum(p.get('maxOccupancy', 0) for p in properties if p.get('maxOccupancy'))
+            total_bedrooms = sum(p.get('bedrooms', 0) for p in properties if p.get('bedrooms'))
+            
+            if total_max_occupancy > 0:
+                context_parts.append(f"\nTotal Capacity:\n")
+                context_parts.append(f"  - Combined Max Occupancy: {total_max_occupancy} guests\n")
+                context_parts.append(f"  - Total Bedrooms: {total_bedrooms}\n")
+            
+            # Integration summary
+            integrations_count = {}
+            for prop in properties:
+                for integration in prop.get('integrations', []):
+                    source = integration.get('source', 'unknown')
+                    integrations_count[source] = integrations_count.get(source, 0) + 1
+            
+            if integrations_count:
+                context_parts.append(f"\nOTA Integrations:\n")
+                for source, count in integrations_count.items():
+                    context_parts.append(f"  - {source.title()}: {count} properties\n")
+            
+            # Knowledge base summary
+            kb_complete = len([p for p in properties if p.get('knowledgePercentage', 0) >= 80])
+            kb_partial = len([p for p in properties if 0 < p.get('knowledgePercentage', 0) < 80])
+            kb_empty = len([p for p in properties if p.get('knowledgePercentage', 0) == 0])
+            
+            context_parts.append(f"\nKnowledge Base Completion:\n")
+            context_parts.append(f"  - Complete (80%+): {kb_complete} properties\n")
+            context_parts.append(f"  - Partial (1-79%): {kb_partial} properties\n")
+            context_parts.append(f"  - Empty (0%): {kb_empty} properties\n")
             
             # Join all parts into final context
             context_text = "".join(context_parts)

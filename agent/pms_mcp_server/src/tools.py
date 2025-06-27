@@ -1,6 +1,6 @@
 from typing import Dict, Any, List
 from mcp.types import Tool, TextContent
-from api_client import PMSAPIClient
+from .api_client import PMSAPIClient
 import json
 import logging
 

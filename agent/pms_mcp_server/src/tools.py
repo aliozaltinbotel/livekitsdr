@@ -79,21 +79,53 @@ class PMSTools:
         try:
             include_inactive = arguments.get("include_inactive", False)
             
-            # Step 1: Get all properties for the customer using the GetAll endpoint
+            # Step 1: Get all properties for the customer using pagination to avoid timeouts
             # The customerId is already in the headers, so the API should filter automatically
-            properties_response = await self.api_client.get("/api/Property/GetAll", params={
-                "PageSize": 1000,  # Get ALL properties (increased from 100)
-                "Status": None if include_inactive else True  # True = active only, None = all
-            })
+            all_properties = []
+            page_index = 0
+            page_size = 100  # Smaller page size to prevent timeouts
+            total_count = 0
             
-            if not properties_response or "items" not in properties_response:
+            while True:
+                try:
+                    logger.info(f"Fetching properties page {page_index + 1} (size: {page_size})")
+                    properties_response = await self.api_client.get("/api/Property/GetAll", params={
+                        "PageIndex": page_index,
+                        "PageSize": page_size,
+                        "Status": None if include_inactive else True  # True = active only, None = all
+                    })
+                    
+                    if not properties_response or "items" not in properties_response:
+                        break
+                    
+                    page_items = properties_response.get("items", [])
+                    total_count = properties_response.get("totalCount", 0)
+                    
+                    if not page_items:
+                        break
+                    
+                    all_properties.extend(page_items)
+                    logger.info(f"Retrieved {len(page_items)} properties, total so far: {len(all_properties)}")
+                    
+                    # Check if we've fetched all properties
+                    if len(all_properties) >= total_count or len(page_items) < page_size:
+                        break
+                    
+                    page_index += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error fetching properties page {page_index}: {e}")
+                    # Continue with what we have so far
+                    break
+            
+            if not all_properties:
                 return [TextContent(
                     type="text",
                     text="No properties found for this customer."
                 )]
             
-            properties = properties_response.get("items", [])
-            total_count = properties_response.get("totalCount", 0)
+            properties = all_properties
+            logger.info(f"Successfully fetched {len(properties)} out of {total_count} total properties")
             
             # Step 2: Build context information
             context_parts = [

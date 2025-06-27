@@ -3,6 +3,10 @@ from typing import Dict, Any, Optional, List, Union
 import os
 from urllib.parse import urljoin
 import base64
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 class PMSAPIClient:
     def __init__(self, base_url: str = "https://pms.botel.ai", api_key: Optional[str] = None, customer_id: Optional[str] = None):
@@ -12,8 +16,10 @@ class PMSAPIClient:
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
             headers=self._get_headers(),
-            timeout=60.0
+            timeout=httpx.Timeout(30.0, connect=10.0)  # 30s total, 10s connect
         )
+        self.max_retries = 3
+        self.retry_delay = 1.0  # Initial retry delay in seconds
     
     def _get_headers(self) -> Dict[str, str]:
         headers = {
@@ -25,9 +31,52 @@ class PMSAPIClient:
             headers["Authorization"] = f"Bearer {self.api_key}"
         return headers
     
+    async def _retry_request(self, method: str, *args, **kwargs):
+        """Execute request with retry logic and exponential backoff"""
+        last_exception = None
+        
+        for attempt in range(self.max_retries):
+            try:
+                if method == "GET":
+                    response = await self.client.get(*args, **kwargs)
+                elif method == "POST":
+                    response = await self.client.post(*args, **kwargs)
+                elif method == "PUT":
+                    response = await self.client.put(*args, **kwargs)
+                elif method == "DELETE":
+                    response = await self.client.delete(*args, **kwargs)
+                else:
+                    raise ValueError(f"Unknown method: {method}")
+                
+                response.raise_for_status()
+                return response
+                
+            except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadTimeout) as e:
+                last_exception = e
+                if attempt < self.max_retries - 1:
+                    delay = self.retry_delay * (2 ** attempt)  # Exponential backoff
+                    logger.warning(f"Request failed (attempt {attempt + 1}/{self.max_retries}): {e}. Retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+                else:
+                    logger.error(f"Request failed after {self.max_retries} attempts: {e}")
+                    raise
+            except httpx.HTTPStatusError as e:
+                # Don't retry on 4xx errors (client errors)
+                if 400 <= e.response.status_code < 500:
+                    raise
+                last_exception = e
+                if attempt < self.max_retries - 1:
+                    delay = self.retry_delay * (2 ** attempt)
+                    logger.warning(f"HTTP {e.response.status_code} (attempt {attempt + 1}/{self.max_retries}). Retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+                else:
+                    logger.error(f"Request failed after {self.max_retries} attempts with HTTP {e.response.status_code}")
+                    raise
+        
+        raise last_exception
+
     async def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        response = await self.client.get(endpoint, params=params)
-        response.raise_for_status()
+        response = await self._retry_request("GET", endpoint, params=params)
         
         # Handle 204 No Content responses
         if response.status_code == 204:
@@ -37,20 +86,19 @@ class PMSAPIClient:
     
     async def post(self, endpoint: str, data: Optional[Dict[str, Any]] = None, files: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         if files:
+            # File uploads don't use retry logic
             response = await self.client.post(endpoint, files=files, data=data)
+            response.raise_for_status()
         else:
-            response = await self.client.post(endpoint, json=data)
-        response.raise_for_status()
+            response = await self._retry_request("POST", endpoint, json=data)
         return response.json()
     
     async def put(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        response = await self.client.put(endpoint, json=data)
-        response.raise_for_status()
+        response = await self._retry_request("PUT", endpoint, json=data)
         return response.json()
     
     async def delete(self, endpoint: str) -> Dict[str, Any]:
-        response = await self.client.delete(endpoint)
-        response.raise_for_status()
+        response = await self._retry_request("DELETE", endpoint)
         try:
             return response.json()
         except:

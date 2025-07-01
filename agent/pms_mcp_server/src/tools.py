@@ -130,10 +130,9 @@ class PMSTools:
             # Step 2: Build context information
             context_parts = [
                 f"Customer Property Context\n",
-                f"{'=' * 50}\n",
-                f"Total Properties: {total_count}\n",
-                f"Active Properties: {len([p for p in properties if p.get('status', False)])}\n",
-                f"Inactive Properties: {len([p for p in properties if not p.get('status', False)])}\n\n"
+                f"You have {total_count} properties in total.\n",
+                f"{len([p for p in properties if p.get('status', False)])} properties are active.\n",
+                f"{len([p for p in properties if not p.get('status', False)])} properties are inactive.\n\n"
             ]
             
             # Step 3: Get detailed information for each property
@@ -142,15 +141,14 @@ class PMSTools:
                 property_name = property_summary.get("name", "Unknown")
                 property_status = "Active" if property_summary.get("status", False) else "Inactive"
                 
-                context_parts.append(f"\nProperty {idx}: {property_name}\n")
-                context_parts.append(f"{'-' * 40}\n")
-                context_parts.append(f"Status: {property_status}\n")
-                context_parts.append(f"ID: {property_id}\n")
+                context_parts.append(f"\nProperty number {idx} is called {property_name}.\n")
+                context_parts.append(f"This property is currently {property_status.lower()}.\n")
+                context_parts.append(f"Property ID is {property_id}.\n")
                 
                 # Add internal name if different from display name
                 internal_name = property_summary.get("internalName")
                 if internal_name and internal_name != property_name:
-                    context_parts.append(f"Internal Name: {internal_name}\n")
+                    context_parts.append(f"It is also known internally as {internal_name}.\n")
                 
                 # Try to get more details for active properties
                 if property_id and property_status == "Active":
@@ -180,7 +178,7 @@ class PMSTools:
                                 if region:
                                     location_parts.append(f"Region: {region}")
                                 full_address = ', '.join(location_parts)
-                                context_parts.append(f"Location: {full_address}\n")
+                                context_parts.append(f"The property is located at {full_address}.\n")
                             
                             # Capacity and Accommodation info
                             max_occupancy = property_detail.get("maxOccupancy")
@@ -190,20 +188,20 @@ class PMSTools:
                             beds = property_detail.get("beds")
                             
                             if max_occupancy:
-                                context_parts.append(f"Max Occupancy: {max_occupancy} guests\n")
+                                context_parts.append(f"The property can accommodate up to {max_occupancy} guests.\n")
                             if max_adults:
-                                context_parts.append(f"Max Adults: {max_adults}\n")
+                                context_parts.append(f"Maximum {max_adults} adults allowed.\n")
                             if bedrooms:
-                                context_parts.append(f"Bedrooms: {bedrooms}\n")
+                                context_parts.append(f"The property has {int(bedrooms)} bedrooms.\n")
                             if bathrooms:
-                                context_parts.append(f"Bathrooms: {bathrooms}\n")
+                                context_parts.append(f"There are {bathrooms} bathrooms.\n")
                             if beds:
-                                context_parts.append(f"Beds: {beds}\n")
+                                context_parts.append(f"The property has {int(beds)} beds.\n")
                             
                             # Property type and details
                             property_type = property_detail.get("typeCode")
                             if property_type:
-                                context_parts.append(f"Type: {property_type}\n")
+                                context_parts.append(f"This is a {property_type}.\n")
                             
                             # Additional property details
                             classification = property_detail.get("classification")
@@ -234,10 +232,10 @@ class PMSTools:
                             
                             if check_in_from or check_in_until:
                                 check_in_time = f"{check_in_from}" + (f"-{check_in_until}" if check_in_until != check_in_from else "")
-                                context_parts.append(f"Check-in Time: {check_in_time}\n")
+                                context_parts.append(f"Check in time is {check_in_time}.\n")
                             if check_out_from or check_out_until:
                                 check_out_time = f"{check_out_from}" + (f"-{check_out_until}" if check_out_until != check_out_from else "")
-                                context_parts.append(f"Check-out Time: {check_out_time}\n")
+                                context_parts.append(f"Check out time is {check_out_time}.\n")
                             
                             # WiFi and Access Codes
                             wifi_network = property_detail.get("wifiNetwork")
@@ -246,18 +244,18 @@ class PMSTools:
                             lock_code = property_detail.get("lockCode")
                             
                             if wifi_network:
-                                context_parts.append(f"WiFi Network: {wifi_network}\n")
+                                context_parts.append(f"The WiFi network name is {wifi_network}.\n")
                             if wifi_password:
-                                context_parts.append(f"WiFi Password: {wifi_password}\n")
+                                context_parts.append(f"The WiFi password is {wifi_password}.\n")
                             if door_code:
-                                context_parts.append(f"Door Code: {door_code}\n")
+                                context_parts.append(f"The door access code is {door_code}.\n")
                             if lock_code:
-                                context_parts.append(f"Lock Code: {lock_code}\n")
+                                context_parts.append(f"The lock code is {lock_code}.\n")
                             
                             # Property Manager
                             property_manager = property_detail.get("propertyManager")
                             if property_manager:
-                                context_parts.append(f"Property Manager: {property_manager}\n")
+                                context_parts.append(f"The property is managed by {property_manager}.\n")
                             
                             # Pricing Settings
                             pricing_settings = property_detail.get("pricingSettings")
@@ -274,11 +272,11 @@ class PMSTools:
                                 guests_included = pricing_settings.get("guestsIncludedInRegularFee")
                                 weekend_days = pricing_settings.get("weekendDays")
                                 
-                                context_parts.append(f"\n--- Pricing Information ---\n")
+                                context_parts.append(f"\nHere is the pricing information.\n")
                                 if base_price is not None:
-                                    context_parts.append(f"Base Price: {currency} {base_price}/night\n")
+                                    context_parts.append(f"The base price is {base_price} {currency} per night.\n")
                                 if weekend_base_price and weekend_base_price > 0:
-                                    context_parts.append(f"Weekend Price: {currency} {weekend_base_price}/night\n")
+                                    context_parts.append(f"The weekend price is {weekend_base_price} {currency} per night.\n")
                                 if weekend_days:
                                     context_parts.append(f"Weekend Days: {weekend_days}\n")
                                 if cleaning_fee:
@@ -312,12 +310,12 @@ class PMSTools:
                                 for tax in taxes:
                                     tax_name = tax.get("name", "Unknown Tax")
                                     tax_rate = tax.get("rate", 0)
-                                    context_parts.append(f"  - {tax_name}: {tax_rate}%\n")
+                                    context_parts.append(f"  {tax_name} is {tax_rate} percent.\n")
                             
                             # Amenities with full details
                             amenities = property_detail.get("amenities", [])
                             if amenities:
-                                context_parts.append(f"\nAmenities ({len(amenities)} total):\n")
+                                context_parts.append(f"\nThis property has {len(amenities)} amenities.\n")
                                 
                                 # Group amenities by category
                                 amenity_categories = {}
@@ -367,39 +365,39 @@ class PMSTools:
                                 
                                 # Display amenities by category
                                 for category in sorted(amenity_categories.keys()):
-                                    context_parts.append(f"  {category} ({len(amenity_categories[category])} items):\n")
+                                    context_parts.append(f"  In the {category} category, there are {len(amenity_categories[category])} items.\n")
                                     for amenity in amenity_categories[category]:  # Show ALL amenities
-                                        context_parts.append(f"    - {amenity}\n")
+                                        context_parts.append(f"    {amenity}\n")
                             
                             # License info
                             license_code = property_detail.get("licenseCode")
                             license_date = property_detail.get("licenseDate")
                             if license_code:
-                                context_parts.append(f"License: {license_code}")
+                                context_parts.append(f"License code is {license_code}")
                                 if license_date:
-                                    context_parts.append(f" (Date: {license_date})")
+                                    context_parts.append(f" issued on {license_date}")
                                 context_parts.append("\n")
                             
                             # Currency info
                             base_currency = property_detail.get("baseCurrency")
                             if base_currency:
-                                context_parts.append(f"Base Currency: {base_currency}\n")
+                                context_parts.append(f"The base currency is {base_currency}.\n")
                             
                             # Coordinates
                             lat = property_detail.get("latitude")
                             lon = property_detail.get("longitude")
                             if lat and lon:
-                                context_parts.append(f"Coordinates: {lat}, {lon}\n")
+                                context_parts.append(f"The property is located at latitude {lat} and longitude {lon}.\n")
                             
                             # Time Zone
                             time_zone = property_detail.get("timeZone")
                             if time_zone:
-                                context_parts.append(f"Time Zone: {time_zone}\n")
+                                context_parts.append(f"The property is in the {time_zone} time zone.\n")
                             
                             # Description (showing FULL descriptions for voice agent context)
                             descriptions = property_detail.get("descriptions", [])
                             if descriptions:
-                                context_parts.append(f"\nDescriptions ({len(descriptions)} total):\n")
+                                context_parts.append(f"\nThe property has {len(descriptions)} descriptions.\n")
                                 for desc_idx, desc in enumerate(descriptions, 1):
                                     if isinstance(desc, dict) and desc.get("text"):
                                         description_text = desc["text"]

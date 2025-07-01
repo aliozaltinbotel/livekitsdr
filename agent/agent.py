@@ -53,6 +53,7 @@ from livekit.plugins import openai, silero, assemblyai, cartesia
 
 from response_cache import response_cache
 from supabase_logger import supabase_logger
+from clean_text_agent import CleanTextAssistant
 
 # Import the property context tool if MCP is not available
 try:
@@ -68,7 +69,7 @@ IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
 if IS_PRODUCTION:
     logger.info("Running in PRODUCTION mode")
 
-class Assistant(Agent):
+class Assistant(CleanTextAssistant):
     def __init__(self) -> None:
         logger.info("Initializing Assistant")
         # Initialize with tools - use direct tool if MCP not available

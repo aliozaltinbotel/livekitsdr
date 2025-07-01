@@ -77,6 +77,15 @@ class CleanTTSWrapper:
             def __init__(self, tts_stream):
                 self._stream = tts_stream
             
+            async def __aenter__(self):
+                """Enter the async context manager"""
+                await self._stream.__aenter__()
+                return self
+                
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                """Exit the async context manager"""
+                return await self._stream.__aexit__(exc_type, exc_val, exc_tb)
+            
             async def push_text(self, text: str) -> None:
                 """Push cleaned text to the stream"""
                 cleaned_text = clean_markdown_for_voice(text)

@@ -22,7 +22,8 @@ class CleanTTSWrapper:
         model: str = "sonic-turbo",
         voice: str = "86e30c1d-714b-4074-a1f2-1cb6b552fb49",
         language: str = "en",
-        speed: float = 0.0
+        speed: float = 0.0,
+        sample_rate: int = 24000
     ):
         # Create the underlying Cartesia TTS instance
         self._tts = cartesia.TTS(
@@ -30,8 +31,10 @@ class CleanTTSWrapper:
             model=model,
             voice=voice,
             language=language,
-            speed=speed
+            speed=speed,
+            sample_rate=sample_rate
         )
+        self._sample_rate = sample_rate
         logger.info("CleanTTSWrapper initialized with markdown stripping")
     
     async def synthesize(
@@ -61,12 +64,13 @@ class CleanTTSWrapper:
     def stream(
         self,
         *,
-        sample_rate: int = 24000,
-        num_channels: int = 1,
         conn_options: Optional[dict] = None
     ):
         """
         Create a streaming TTS session that cleans markdown
+        
+        Note: sample_rate and num_channels are configured when creating the TTS instance,
+        not when creating a stream.
         """
         # Return a wrapped stream that cleans text before synthesis
         class CleanStreamWrapper:
@@ -94,27 +98,12 @@ class CleanTTSWrapper:
             async def __anext__(self):
                 return await self._stream.__anext__()
         
-        # Create the underlying stream and wrap it
-        # Pass conn_options if the underlying TTS supports it
-        stream_kwargs = {
-            'sample_rate': sample_rate,
-            'num_channels': num_channels
-        }
+        # Create the underlying stream
+        # Only pass conn_options if provided
         if conn_options is not None:
-            stream_kwargs['conn_options'] = conn_options
-            
-        try:
-            underlying_stream = self._tts.stream(**stream_kwargs)
-        except TypeError as e:
-            # If conn_options is not supported, try without it
-            if 'conn_options' in str(e):
-                logger.debug("Underlying TTS does not support conn_options, creating stream without it")
-                underlying_stream = self._tts.stream(
-                    sample_rate=sample_rate,
-                    num_channels=num_channels
-                )
-            else:
-                raise
+            underlying_stream = self._tts.stream(conn_options=conn_options)
+        else:
+            underlying_stream = self._tts.stream()
                 
         return CleanStreamWrapper(underlying_stream)
     

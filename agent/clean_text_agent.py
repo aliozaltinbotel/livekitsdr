@@ -17,7 +17,7 @@ class CleanTextAssistant(Agent):
     async def transcription_node(
         self, 
         text: AsyncIterable[str], 
-        model_settings: llm.ModelSettings
+        model_settings=None
     ) -> AsyncIterable[str]:
         """
         Override the transcription node to clean markdown formatting

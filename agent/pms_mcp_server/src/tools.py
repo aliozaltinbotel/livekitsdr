@@ -82,13 +82,13 @@ class PMSTools:
             # Step 1: Get all properties for the customer using pagination to avoid timeouts
             # The customerId is already in the headers, so the API should filter automatically
             all_properties = []
-            page_index = 0
+            page_index = 1  # PMS API uses 1-based page indexing
             page_size = 100  # Smaller page size to prevent timeouts
             total_count = 0
             
             while True:
                 try:
-                    logger.info(f"Fetching properties page {page_index + 1} (size: {page_size})")
+                    logger.info(f"Fetching properties page {page_index} (size: {page_size})")
                     properties_response = await self.api_client.get("/api/Property/GetAll", params={
                         "PageIndex": page_index,
                         "PageSize": page_size,

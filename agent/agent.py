@@ -54,6 +54,7 @@ from livekit.plugins import openai, silero, assemblyai, cartesia
 from response_cache import response_cache
 from supabase_logger import supabase_logger
 from clean_text_agent import CleanTextAssistant
+from clean_tts_wrapper import CleanTTSWrapper
 
 # Import the property context tool if MCP is not available
 try:
@@ -389,16 +390,16 @@ async def entrypoint(ctx: JobContext):
         # Configure the voice session with optimized parameters for v1.1.4
         logger.info("Creating AgentSession with optimized v1.1.4 parameters")  
         
-        # Create TTS instance with error handling
+        # Create TTS instance with markdown cleaning wrapper
         try:
-            tts_instance = cartesia.TTS(
+            tts_instance = CleanTTSWrapper(
                 api_key=os.getenv("CARTESIA_API_KEY"),
                 model="sonic-turbo",
                 voice="86e30c1d-714b-4074-a1f2-1cb6b552fb49",
                 language="en",
                 speed=0.0,
             )
-            logger.info("Cartesia TTS instance created successfully")
+            logger.info("CleanTTSWrapper (Cartesia TTS) instance created successfully")
         except Exception as e:
             logger.error(f"Failed to create Cartesia TTS instance: {e}")
             raise

@@ -6,9 +6,10 @@ Strips markdown formatting before TTS to prevent reading asterisks and other for
 import re
 from typing import AsyncIterable
 from livekit.agents import llm
+from livekit.agents.voice import Agent
 
 
-class CleanTextAssistant(llm.AssistantLLM):
+class CleanTextAssistant(Agent):
     """
     Custom Assistant that cleans markdown formatting from text before TTS
     """

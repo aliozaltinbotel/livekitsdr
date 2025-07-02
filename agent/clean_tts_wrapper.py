@@ -86,12 +86,12 @@ class CleanTTSWrapper:
                 """Exit the async context manager"""
                 return await self._stream.__aexit__(exc_type, exc_val, exc_tb)
             
-            async def push_text(self, text: str) -> None:
+            def push_text(self, text: str) -> None:
                 """Push cleaned text to the stream"""
                 cleaned_text = clean_markdown_for_voice(text)
                 if text != cleaned_text:
                     logger.debug(f"Stream: Cleaned markdown: '{text}' -> '{cleaned_text}'")
-                await self._stream.push_text(cleaned_text)
+                self._stream.push_text(cleaned_text)
             
             async def push_frame(self, frame: Optional[rtc.AudioFrame]) -> None:
                 """Push audio frame to the stream"""

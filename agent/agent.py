@@ -398,6 +398,7 @@ async def entrypoint(ctx: JobContext):
                 voice="86e30c1d-714b-4074-a1f2-1cb6b552fb49",
                 language="en",
                 speed=0.0,
+                sample_rate=16000,  # Match STT sample rate for consistency
             )
             logger.info("CleanTTSWrapper (Cartesia TTS) instance created successfully")
         except Exception as e:

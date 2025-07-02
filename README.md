@@ -8,9 +8,9 @@ A production-ready voice AI agent built with LiveKit Cloud, featuring real-time 
 - **Backend**: Python agent with LiveKit Agents SDK
 - **Infrastructure**: LiveKit Cloud (managed WebRTC)
 - **AI Stack**:
-  - STT: Deepgram Nova-2
+  - STT: AssemblyAI Universal
   - LLM: OpenAI GPT-4o-mini
-  - TTS: Cartesia Sonic (voice: f786b574-daa5-4673-aa0c-cbe3e8534c02)
+  - TTS: Cartesia Sonic-Turbo
 - **Database**: Supabase (optional, for conversation logging)
 
 ## 🚀 Quick Start
@@ -20,7 +20,7 @@ A production-ready voice AI agent built with LiveKit Cloud, featuring real-time 
 - Node.js 18+ and pnpm
 - Python 3.9+
 - LiveKit Cloud account
-- API keys for OpenAI, Deepgram, and Cartesia
+- API keys for OpenAI, AssemblyAI, and Cartesia
 
 ### Setup
 

@@ -80,7 +80,6 @@ jobs:
                 LIVEKIT_API_KEY="${{ secrets.LIVEKIT_API_KEY }}" \
                 LIVEKIT_API_SECRET="${{ secrets.LIVEKIT_API_SECRET }}" \
                 OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-                DEEPGRAM_API_KEY="${{ secrets.DEEPGRAM_API_KEY }}" \
                 ASSEMBLYAI_API_KEY="${{ secrets.ASSEMBLYAI_API_KEY }}" \
                 CARTESIA_API_KEY="${{ secrets.CARTESIA_API_KEY }}" \
                 GOOGLE_SERVICE_ACCOUNT_KEY="/app/botelai-d95567fc3ae3.json" \

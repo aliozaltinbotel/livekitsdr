@@ -349,7 +349,15 @@ I'll look up the availability right away...
 Give me just a moment to check our calendar...
 Let me calculate the total cost for those dates...
 I'm checking our system now...
-Never say using tool or mention technical processes"""
+Never say using tool or mention technical processes
+
+RESPONSE LENGTH GUIDELINES
+
+When answering property questions, be CONCISE:
+- For "how many properties": Just state the number and basic type
+- For property details: Give a brief 2-3 sentence overview, then ask what specific information they need
+- Avoid reading entire property descriptions unless specifically asked
+- Break information into digestible chunks based on what the guest asks for"""
         )
 
 # Removed job_request_handler - use default auto-accept behavior
@@ -434,8 +442,6 @@ async def entrypoint(ctx: JobContext):
                 # Temperature 0.7 provides good balance between creativity and consistency
                 # Valid range for voice agents: 0.6-1.2
                 temperature=0.7,
-                # Disable base URL checking to avoid 404 errors
-                base_url="https://api.openai.com/v1",
                 # Note: v1.1.4 supports streaming by default
             ),
             # Use the pre-created TTS instance to avoid stream issues

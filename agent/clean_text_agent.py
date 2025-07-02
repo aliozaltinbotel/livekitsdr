@@ -31,8 +31,46 @@ class CleanTextAssistant(Agent):
         if text != cleaned_text:
             logger.info(f"Cleaned markdown before TTS: '{text[:50]}...' -> '{cleaned_text[:50]}...'")
         
+        # Check if text is too long and needs chunking
+        # Cartesia has a limit, let's chunk at 500 characters for natural breaks
+        if len(cleaned_text) > 500:
+            logger.info(f"Text too long ({len(cleaned_text)} chars), chunking for better TTS delivery")
+            return await self._say_chunked(cleaned_text, *args, **kwargs)
+        
         # Call parent's say method with cleaned text
         return await super().say(cleaned_text, *args, **kwargs)
+    
+    async def _say_chunked(self, text: str, *args, **kwargs):
+        """
+        Break long text into smaller chunks for TTS
+        """
+        # Split by sentences first
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        
+        current_chunk = ""
+        chunks = []
+        
+        for sentence in sentences:
+            # If adding this sentence would exceed limit, save current chunk
+            if current_chunk and len(current_chunk) + len(sentence) > 400:
+                chunks.append(current_chunk.strip())
+                current_chunk = sentence
+            else:
+                current_chunk += " " + sentence if current_chunk else sentence
+        
+        # Don't forget the last chunk
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+        
+        logger.info(f"Split text into {len(chunks)} chunks for TTS")
+        
+        # Speak each chunk
+        for i, chunk in enumerate(chunks):
+            logger.debug(f"Speaking chunk {i+1}/{len(chunks)}: {chunk[:50]}...")
+            await super().say(chunk, *args, **kwargs)
+            # Small pause between chunks for natural flow
+            if i < len(chunks) - 1:
+                await super().say("...", *args, **kwargs)
     
     def _clean_markdown(self, text: str) -> str:
         """

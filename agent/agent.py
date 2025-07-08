@@ -394,7 +394,7 @@ async def entrypoint(ctx: JobContext):
                 voice="86e30c1d-714b-4074-a1f2-1cb6b552fb49",
                 language="en",
                 speed=0.0,
-                sample_rate=16000,  # Match STT sample rate for consistency
+                sample_rate=24000,  # Cartesia optimal sample rate
             )
             logger.info("CleanTTSWrapper (Cartesia TTS) instance created successfully")
         except Exception as e:
@@ -473,27 +473,25 @@ async def entrypoint(ctx: JobContext):
         
         
         # Generate initial greeting immediately
-        initial_greeting = "Hi there! I'm Skylar, the virtual assistant for our rental properties. How can I help with your stay today?"
+        # Using simple greeting without apostrophes to test if that's the issue
+        initial_greeting = "Hi there. I am Skylar, the virtual assistant for our rental properties. How can I help with your stay today?"
         
         # Start with immediate greeting
-        logger.info("Sending initial greeting to user")
-        await session.say(initial_greeting)
-        logger.info("Initial greeting sent successfully")
+        logger.info(f"Sending initial greeting to user: '{initial_greeting}'")
+        logger.info(f"Greeting length: {len(initial_greeting)} characters")
         
-        # Load property context in the background
-        async def load_property_context():
-            logger.info("Starting background property context loading")
-            try:
-                await session.generate_reply(
-                    instructions="Use the get_customer_properties_context tool to load all property information. Do not say anything about loading or mention this to the user."
-                )
-                logger.info("Property context loaded successfully in background")
-            except Exception as e:
-                logger.error(f"Failed to load property context: {e}", exc_info=True)
+        try:
+            # Send greeting and wait for it to complete
+            await session.say(initial_greeting, allow_interruption=False)
+            logger.info("Initial greeting sent successfully")
+            
+            # Add a small delay to ensure greeting completes
+            await asyncio.sleep(0.5)
+        except Exception as e:
+            logger.error(f"Error sending initial greeting: {e}", exc_info=True)
         
-        # Run context loading in background
-        logger.info("Creating background task for property context loading")
-        asyncio.create_task(load_property_context())
+        # Removed background property loading to prevent interruption
+        # Properties will be loaded on-demand when user asks
         
         # Store the initial greeting as the context
         last_agent_message = initial_greeting

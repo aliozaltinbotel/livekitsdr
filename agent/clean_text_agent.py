@@ -22,23 +22,21 @@ class CleanTextAssistant(Agent):
     
     async def say(self, text: str, *args, **kwargs):
         """
-        Override the say method to clean markdown before speaking
+        Override the say method to handle text chunking for long responses
         """
-        # Clean markdown from the text
-        cleaned_text = self._clean_markdown(text)
+        # Don't clean markdown here - let the TTS wrapper handle it
+        # to avoid double cleaning
         
-        # Log if we made changes
-        if text != cleaned_text:
-            logger.info(f"Cleaned markdown before TTS: '{text[:50]}...' -> '{cleaned_text[:50]}...'")
+        logger.info(f"Say method called with text: '{text[:100]}...' (length: {len(text)})")
         
         # Check if text is too long and needs chunking
         # Cartesia has a limit, let's chunk at 500 characters for natural breaks
-        if len(cleaned_text) > 500:
-            logger.info(f"Text too long ({len(cleaned_text)} chars), chunking for better TTS delivery")
-            return await self._say_chunked(cleaned_text, *args, **kwargs)
+        if len(text) > 500:
+            logger.info(f"Text too long ({len(text)} chars), chunking for better TTS delivery")
+            return await self._say_chunked(text, *args, **kwargs)
         
-        # Call parent's say method with cleaned text
-        return await super().say(cleaned_text, *args, **kwargs)
+        # Call parent's say method with original text
+        return await super().say(text, *args, **kwargs)
     
     async def _say_chunked(self, text: str, *args, **kwargs):
         """
@@ -66,7 +64,7 @@ class CleanTextAssistant(Agent):
         
         # Speak each chunk
         for i, chunk in enumerate(chunks):
-            logger.debug(f"Speaking chunk {i+1}/{len(chunks)}: {chunk[:50]}...")
+            logger.info(f"Speaking chunk {i+1}/{len(chunks)}: {chunk[:50]}...")
             await super().say(chunk, *args, **kwargs)
             # Small pause between chunks for natural flow
             if i < len(chunks) - 1:

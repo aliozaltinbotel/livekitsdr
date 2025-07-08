@@ -90,7 +90,10 @@ class CleanTTSWrapper:
                 """Push cleaned text to the stream"""
                 cleaned_text = clean_markdown_for_voice(text)
                 if text != cleaned_text:
-                    logger.debug(f"Stream: Cleaned markdown: '{text}' -> '{cleaned_text}'")
+                    logger.info(f"Stream: Cleaned markdown: '{text}' -> '{cleaned_text}'")
+                else:
+                    logger.info(f"Stream: Pushing text unchanged: '{text}'")
+                logger.info(f"Text length being sent to TTS: {len(cleaned_text)} characters")
                 self._stream.push_text(cleaned_text)
             
             async def push_frame(self, frame: Optional[rtc.AudioFrame]) -> None:

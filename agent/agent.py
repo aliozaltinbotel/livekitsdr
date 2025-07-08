@@ -481,8 +481,8 @@ async def entrypoint(ctx: JobContext):
         logger.info(f"Greeting length: {len(initial_greeting)} characters")
         
         try:
-            # Send greeting and wait for it to complete
-            await session.say(initial_greeting, allow_interruption=False)
+            # Send greeting
+            await session.say(initial_greeting)
             logger.info("Initial greeting sent successfully")
             
             # Add a small delay to ensure greeting completes

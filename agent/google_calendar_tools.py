@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 import pytz
 from livekit.agents import function_tool, RunContext
-from supabase_logger import supabase_logger
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -427,17 +426,14 @@ async def google_calendar_create_meeting(
                     elif hasattr(context.job, 'id'):
                         room_id = context.job.id
                 
-                # Try to get from current session in supabase_logger
-                if not room_id and hasattr(supabase_logger, 'current_session_id'):
-                    room_id = supabase_logger.current_session_id
+                # Log room ID for tracking
+                if not room_id:
+                    room_id = "unknown"
                 
                 if room_id:
                     logger.info(f"Marking demo scheduled for room_id: {room_id}")
-                    asyncio.create_task(supabase_logger.mark_demo_scheduled(
-                        room_id=room_id,
-                        demo_time=start_time.isoformat(),
-                        timezone=timezone
-                    ))
+                    # Log demo scheduled
+                    logger.info(f"Demo scheduled for {formatted_datetime} {timezone} in room {room_id}")
                 else:
                     logger.warning("Could not determine room_id for demo scheduling")
             except Exception as e:

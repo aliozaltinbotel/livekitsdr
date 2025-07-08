@@ -102,10 +102,6 @@ AZURE_SPEECH_KEY=your-speech-key
 # Google Calendar
 GOOGLE_SERVICE_ACCOUNT_JSON=path-to-json
 GOOGLE_CALENDAR_ID=your-calendar-id
-
-# Supabase Analytics
-SUPABASE_URL=your-supabase-url
-SUPABASE_KEY=your-supabase-key
 ```
 
 ## Production Deployment

@@ -52,7 +52,6 @@ from livekit.agents.voice import Agent, AgentSession
 from livekit.plugins import openai, silero, assemblyai, cartesia
 
 from response_cache import response_cache
-from supabase_logger import supabase_logger
 from clean_text_agent import CleanTextAssistant
 from clean_tts_wrapper import CleanTTSWrapper
 
@@ -371,24 +370,13 @@ async def entrypoint(ctx: JobContext):
     logger.info(f"Room name: {ctx.room.name if ctx.room else 'No room'}")
     
     try:
-        # Start Supabase session logging
+        # Get room name for logging
         room_name = getattr(ctx.room, 'name', None) or ctx.job.id
-        session_id = None
         
         logger.info(f"Room name: {room_name}")
         logger.info(f"Participant identity: {getattr(ctx.job, 'participant_identity', None)}")
         
-        try:
-            logger.info("Starting Supabase session")
-            session_id = await supabase_logger.start_session(
-                room_id=room_name,
-                job_id=ctx.job.id,
-                participant_id=getattr(ctx.job, 'participant_identity', None) or "unknown"
-            )
-            logger.info(f"Supabase session started: {session_id}")
-        except Exception as e:
-            logger.error(f"Failed to start Supabase session: {e}")
-            # Continue without session logging in production
+        # Continue without session logging
         
         # Create the assistant first
         logger.info("Creating Assistant instance")
@@ -510,12 +498,8 @@ async def entrypoint(ctx: JobContext):
         # Store the initial greeting as the context
         last_agent_message = initial_greeting
         logging.info("Agent started with immediate greeting, loading context in background")
-        asyncio.create_task(supabase_logger.log_message(
-            room_id=room_name,
-            participant_id="agent",
-            role="agent",
-            message=initial_greeting
-        ))
+        # Log initial greeting
+        logger.info(f"Agent greeting: {initial_greeting}")
         
         # Track collected user data and context
         user_data = {}
@@ -524,7 +508,7 @@ async def entrypoint(ctx: JobContext):
         # Log session info for debugging
         logging.info(f"Session started, type: {type(session)}")
         logging.info(f"Room name: {room_name}")
-        logging.info(f"Session ID in logger: {supabase_logger.current_session_id}")
+        logging.info(f"Session started for room: {room_name}")
         
         # Try to list available events
         if hasattr(session, '_events'):
@@ -554,10 +538,7 @@ async def entrypoint(ctx: JobContext):
                         if potential_name.lower() not in ['yes', 'no', 'okay', 'sure']:
                             user_data['user_name'] = potential_name
                             logging.info(f"Extracted name from phrase: {potential_name}")
-                            asyncio.create_task(supabase_logger.update_session_data(
-                                room_name, 
-                                {'user_name': potential_name}
-                            ))
+                            logger.info(f"User name identified: {potential_name}")
                             break
             
             elif len(user_data.get('user_name', '')) == 0:
@@ -591,10 +572,7 @@ async def entrypoint(ctx: JobContext):
                         if potential_name.lower() not in exclude_words:
                             user_data['user_name'] = potential_name
                             logging.info(f"Extracted name: {potential_name}")
-                            asyncio.create_task(supabase_logger.update_session_data(
-                                room_name, 
-                                {'user_name': potential_name}
-                            ))
+                            logger.info(f"User name identified: {potential_name}")
                         else:
                             logging.info(f"Skipped common word as name: {potential_name}")
             
@@ -607,10 +585,7 @@ async def entrypoint(ctx: JobContext):
                     email = email_match.group()
                     user_data['user_email'] = email
                     logging.info(f"Extracted email: {email}")
-                    asyncio.create_task(supabase_logger.update_session_data(
-                        room_name, 
-                        {'user_email': email}
-                    ))
+                    logger.info(f"User email identified: {email}")
                 else:
                     # Try to handle spoken format like "john at example dot com"
                     text_normalized = text_lower.replace(' at ', '@').replace(' dot ', '.')
@@ -619,10 +594,7 @@ async def entrypoint(ctx: JobContext):
                         email = email_match.group()
                         user_data['user_email'] = email
                         logging.info(f"Extracted email (from spoken format): {email}")
-                        asyncio.create_task(supabase_logger.update_session_data(
-                            room_name, 
-                            {'user_email': email}
-                        ))
+                        logger.info(f"User email identified: {email}")
             
             # Check for phone number (basic pattern)
             if any(char.isdigit() for char in text):
@@ -632,10 +604,7 @@ async def entrypoint(ctx: JobContext):
                 if phone_match and len(phone_match.group().replace(' ', '').replace('-', '').replace('.', '').replace('(', '').replace(')', '').replace('+', '')) >= 10:
                     user_data['user_phone'] = phone_match.group()
                     logging.info(f"Extracted phone: {phone_match.group()}")
-                    asyncio.create_task(supabase_logger.update_session_data(
-                        room_name, 
-                        {'user_phone': phone_match.group()}
-                    ))
+                    logger.info(f"User phone identified: {phone_match.group()}")
         
         # Log conversation events - using the actual available events
         # The logs show only 'agent_state_changed' and 'user_input_transcribed' are available
@@ -661,12 +630,8 @@ async def entrypoint(ctx: JobContext):
                 if not IS_PRODUCTION:
                     print(f"User: {text}")
                 logger.info(f"User transcribed text: {text}")
-                asyncio.create_task(supabase_logger.log_message(
-                    room_id=room_name,
-                    participant_id=getattr(ctx.job, 'participant_identity', None) or "user",
-                    role="user",
-                    message=text
-                ))
+                # Log user message
+                logger.info(f"User message: {text}")
                 # Extract user data
                 extract_user_data(text)
         
@@ -682,12 +647,8 @@ async def entrypoint(ctx: JobContext):
                 last_agent_message = text
                 if not IS_PRODUCTION:
                     print(f"Agent: {text}")
-                asyncio.create_task(supabase_logger.log_message(
-                    room_id=room_name,
-                    participant_id="agent",
-                    role="agent",
-                    message=text
-                ))
+                # Log agent message
+                logger.info(f"Agent message: {text}")
         
         # Also try the original events in case they work
         try:
@@ -699,12 +660,8 @@ async def entrypoint(ctx: JobContext):
                 if not IS_PRODUCTION:
                     print(f"Agent: {text}")
                 logging.info(f"Agent speech committed: {text}")
-                asyncio.create_task(supabase_logger.log_message(
-                    room_id=room_name,
-                    participant_id="agent",
-                    role="agent",
-                    message=text
-                ))
+                # Log agent message
+                logger.info(f"Agent message: {text}")
         except:
             logging.warning("agent_speech_committed event not available")
             
@@ -715,12 +672,8 @@ async def entrypoint(ctx: JobContext):
                 if not IS_PRODUCTION:
                     print(f"User: {text}")
                 logging.info(f"User speech committed: {text}")
-                asyncio.create_task(supabase_logger.log_message(
-                    room_id=room_name,
-                    participant_id=getattr(ctx.job, 'participant_identity', None) or "user",
-                    role="user",
-                    message=text
-                ))
+                # Log user message
+                logger.info(f"User message: {text}")
                 # Extract user data
                 extract_user_data(text)
         except:
@@ -730,13 +683,7 @@ async def entrypoint(ctx: JobContext):
         def on_function_calls_finished(function_calls):
             """Log tool calls to Supabase."""
             for call in function_calls:
-                asyncio.create_task(supabase_logger.log_tool_call(
-                    room_id=room_name,
-                    tool_name=call.function_info.name,
-                    parameters=call.arguments,
-                    result=str(call.result) if hasattr(call, 'result') else None,
-                    success=True
-                ))
+                logger.info(f"Tool call: {call.function_info.name} with params: {call.arguments}")
         
         # Add cleanup on disconnect
         @ctx.room.on("participant_disconnected")
@@ -744,13 +691,13 @@ async def entrypoint(ctx: JobContext):
             """Handle participant disconnect."""
             job_participant = getattr(ctx.job, 'participant_identity', None)
             if job_participant and participant.identity == job_participant:
-                asyncio.create_task(supabase_logger.end_session(room_name, 'completed'))
+                logger.info(f"Participant disconnected, session ended: {room_name}")
         
         # Also handle room disconnect
         @ctx.room.on("disconnected")
         def on_room_disconnected():
             """Handle room disconnect."""
-            asyncio.create_task(supabase_logger.end_session(room_name, 'disconnected'))
+            logger.info(f"Room disconnected, session ended: {room_name}")
         
         # Monitor conversation history as a fallback for agent messages
         async def monitor_conversation():
@@ -795,12 +742,8 @@ async def entrypoint(ctx: JobContext):
                                     if not IS_PRODUCTION:
                                         print(f"[HISTORY] Agent: {msg.content}")
                                     logging.info(f"Agent from history: {msg.content}")
-                                    asyncio.create_task(supabase_logger.log_message(
-                                        room_id=room_name,
-                                        participant_id="agent",
-                                        role="agent",
-                                        message=msg.content
-                                    ))
+                                    # Log agent message from history
+                                    logger.info(f"Agent (from history): {msg.content}")
                         last_message_count = len(messages)
                     elif attempts == 1:
                         logging.warning("No conversation history found to monitor")
@@ -821,13 +764,11 @@ async def entrypoint(ctx: JobContext):
         except asyncio.CancelledError:
             logger.info("Agent cancelled, cleaning up")
             monitor_task.cancel()
-            if session_id:
-                await supabase_logger.end_session(room_name, 'cancelled')
+            logger.info(f"Session cancelled: {room_name}")
             raise
     except Exception as e:
         logger.error(f"Critical error in entrypoint: {e}", exc_info=True)
-        if session_id:
-            await supabase_logger.end_session(room_name, 'error')
+        logger.error(f"Session ended with error: {room_name}")
         raise
     finally:
         logger.info("=== ENTRYPOINT FINISHED ===")

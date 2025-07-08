@@ -63,7 +63,6 @@ livekitsdr/
 ├── agent/            # Python voice agent
 │   ├── agent.py      # Main agent logic
 │   └── requirements.txt
-└── supabase/         # Database schema (optional)
 ```
 
 ## 🔧 Configuration
@@ -80,10 +79,6 @@ LIVEKIT_API_SECRET=<your-api-secret>
 OPENAI_API_KEY=sk-...
 DEEPGRAM_API_KEY=...
 CARTESIA_API_KEY=...
-
-# Optional: Database
-SUPABASE_URL=https://<project>.supabase.co
-SUPABASE_KEY=<anon-key>
 ```
 
 ### Agent Configuration
@@ -92,21 +87,15 @@ The agent is configured with:
 - VAD (Voice Activity Detection) with Silero
 - Multilingual turn detection
 - Interruption handling (min 2 words)
-- Conversation logging to Supabase
+- Comprehensive conversation logging
 
 ## 🎮 Features
 
 - **Real-time voice interaction** with <200ms latency
 - **Natural conversation flow** with interruption handling
 - **Multilingual support** with automatic language detection
-- **Conversation history** stored in Supabase
+- **Conversation history** with comprehensive logging
 - **Noise cancellation** and echo reduction
-
-## 📊 Database Schema
-
-If using Supabase for logging, run the schema in `supabase/schema.sql`:
-- `conversations` - Stores all messages
-- `call_sessions` - Tracks call metadata
 - `call_summaries` - Aggregated view
 
 ## 🚀 Deployment
